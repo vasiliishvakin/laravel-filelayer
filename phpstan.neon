@@ -1,0 +1,28 @@
+parameters:
+    level: 1
+
+    paths:
+        - %currentWorkingDirectory%
+
+    excludePaths:
+        - %currentWorkingDirectory%/docs
+        - %currentWorkingDirectory%/node_modules
+        - %currentWorkingDirectory%/vendor
+        - %currentWorkingDirectory%/_*
+
+    # Other PHPStan settings
+    ignoreErrors:
+        # Add rules to ignore specific errors if needed
+        #- '#Some specific error to ignore#'
+        - identifier: new.static
+
+    scanFiles:
+        # Include any custom rules or types you may need
+        #- %currentWorkingDirectory%/path/to/your/custom/rules/or/types.php
+
+    #services:
+        # Example: Adding a custom extension
+        # - MyCompany\PHPStan\MyCustomExtension
+
+includes:
+    #- vendor/phpstan/phpstan/phpstan.neon
