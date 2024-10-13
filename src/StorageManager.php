@@ -57,6 +57,30 @@ class StorageManager
         }
     }
 
+    public function processorsAll(): array
+    {
+        return $this->app->tagged(ProcessorInterface::class);
+    }
+
+    public function processors(FileWrapper $file): array
+    {
+        // return array_filter($this->processorsAll(), fn(ProcessorInterface $processor) => $processor->isSupported($mime));
+        return [];
+    }
+
+    public function __call($name, $arguments)
+    {
+        $storage = $arguments && $arguments[0] instanceof FileWrapper && $arguments[0]->storageName()
+            ? $this->storage($arguments[0]->storageName())
+            : $this->mainStorage;
+
+        if (! method_exists($storage, $name)) {
+            throw new \Exception('Method not found');
+        }
+
+        return $storage->$name(...$arguments);
+    }
+
     protected function createFileWrapper(FileData $fileData, ?Filesystem $storage = null): FileWrapper
     {
         return new FileWrapper($this, $fileData, $storage);
@@ -89,27 +113,29 @@ class StorageManager
         throw new \Exception('File not found');
     }
 
-    public function processorsAll(): array
+    public function fileByPath(string $path, ?string $storage = null): FileWrapper
     {
-        return $this->app->tagged(ProcessorInterface::class);
-    }
-
-    public function processors(FileWrapper $file): array
-    {
-        // return array_filter($this->processorsAll(), fn(ProcessorInterface $processor) => $processor->isSupported($mime));
-        return [];
-    }
-
-    public function __call($name, $arguments)
-    {
-        $storage = $arguments && $arguments[0] instanceof FileWrapper && $arguments[0]->storageName()
-            ? $this->storage($arguments[0]->storageName())
-            : $this->mainStorage;
-
-        if (! method_exists($storage, $name)) {
-            throw new \Exception('Method not found');
+        $fileData = $this->fileRepository->findByPath($path, $storage);
+        if (! $fileData) {
+            throw new \Exception('File not found');
         }
 
-        return $storage->$name(...$arguments);
+        return $this->createFileWrapper($fileData);
+    }
+
+    public function fileByAlias(string $alias): FileWrapper
+    {
+        $fileData = $this->fileRepository->findByAlias($alias);
+        if (! $fileData) {
+            throw new \Exception('File not found');
+        }
+
+        return $this->createFileWrapper($fileData);
+    }
+
+    public function uploadLocal(string $localPath, string $newPath, ?string $storageName = null)
+    {
+        $storage = $storageName ? $this->storage($storageName) : $this->mainStorage;
+        $storage->put($newPath, file_get_contents($localPath));
     }
 }
