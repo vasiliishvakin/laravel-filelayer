@@ -1,28 +1,70 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\StorageManager;
+use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileActions;
+use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileInfo;
 
-/** @mixin Filesystem */
 class FileWrapper
 {
+    use FileActions;
+    use FileInfo;
+
+    protected const REFRESHED_PROPERTIES = [
+        'size',
+        'last_modified',
+        'mime',
+        'url',
+    ];
+
     public function __construct(
-        protected readonly StorageManager $storageManager,
-        protected FileData $fileData
-    ) {
-        // Constructor
+        protected readonly StorageManager $manager,
+        protected FileData $data,
+    ) {}
+
+    public function data(): FileData
+    {
+        return $this->data;
     }
 
-    public function storageName(): ?string
+    public function manager(): StorageManager
     {
-        return $this->fileData->storage ?? null;
+        return $this->manager;
     }
 
-    public function __call($method, $parameters)
+    public function incomplete(): bool
     {
-        return $this->storageManager->$method($this, ...$parameters);
+        $data = $this->data();
+        foreach (self::REFRESHED_PROPERTIES as $property) {
+            if (! property_exists($data, $property) || $data?->$property === null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function refresh(): self
+    {
+        $properties = [
+            'size' => $this->manager->size($this),
+            'last_modified' => $this->manager->lastModified($this),
+            'mime' => $this->manager->mime($this),
+            'url' => $this->manager->url($this),
+        ];
+
+        $data = FileData::from([...$this->data->toArray(), ...$properties]);
+        $this->data = $data;
+
+        return $this;
+    }
+
+    public function sync()
+    {
+        return $this->manager->sync($this);
     }
 }

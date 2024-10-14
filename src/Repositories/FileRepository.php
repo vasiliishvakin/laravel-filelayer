@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Vaskiq\LaravelFileLayer\Repositories;
 
 use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
@@ -14,5 +16,14 @@ class FileRepository extends EloquentRepository
     public function __construct(File $model, DataFactoryInterface $dataFactory)
     {
         parent::__construct($model, $dataFactory);
+    }
+
+    public function findByPath(string $path): ?FileData
+    {
+        $model = $this->query()->where('path', $path)
+            ->orWhere('alias', $path)
+            ->first();
+
+        return $model ? $this->toData($model) : null;
     }
 }
