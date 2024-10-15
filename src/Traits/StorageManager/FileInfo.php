@@ -57,4 +57,14 @@ trait FileInfo
 
         return $storage->exists($path);
     }
+
+    public function isLocal(FileWrapper $file): bool
+    {
+        return $this->getStorageOperator()->isLocal($this->fileStorage($file));
+    }
+
+    public function fullPath(FileWrapper $file): string
+    {
+        return $this->fileStorage($file)->path($this->filePath($file));
+    }
 }

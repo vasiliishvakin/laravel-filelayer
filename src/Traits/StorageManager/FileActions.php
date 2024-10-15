@@ -109,4 +109,13 @@ trait FileActions
 
         return $this->register($file);
     }
+
+    public function getWorkingCopy(FileWrapper $file): ?string
+    {
+        if ($file->isLocal()) {
+            return null;
+        }
+
+        throw new \Exception('Not implemented');
+    }
 }

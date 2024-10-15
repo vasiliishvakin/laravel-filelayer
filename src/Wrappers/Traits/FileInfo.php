@@ -80,4 +80,9 @@ trait FileInfo
     {
         return $this->data->url ?? $this->manager()->url($this);
     }
+
+    public function isLocal(): bool
+    {
+        return $this->manager()->isLocal($this);
+    }
 }

@@ -26,7 +26,7 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Bootstrapping logic, such as publishing config files or migrations.
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->app->booting(function () {
             $loader = \Illuminate\Foundation\AliasLoader::getInstance();
