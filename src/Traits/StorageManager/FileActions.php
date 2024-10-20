@@ -6,11 +6,14 @@ namespace Vaskiq\LaravelFileLayer\Traits\StorageManager;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
+use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
 trait FileActions
 {
     use FileInfo;
     use FindFile;
+
+    abstract public function makeTmpFileWrapper(string $mime, ?string $content = null): TmpFileWrapper;
 
     public function register(FileWrapper $file, bool $forceRefresh = false): FileWrapper
     {
@@ -110,12 +113,13 @@ trait FileActions
         return $this->register($file);
     }
 
-    public function getWorkingCopy(FileWrapper $file): ?string
+    public function working(FileWrapper $file): FileWrapper
     {
-        if ($file->isLocal()) {
-            return null;
-        }
+        // if ($file->isLocal()) {
+        //     return $file;
+        // }
+        $content = $this->get($file);
 
-        throw new \Exception('Not implemented');
+        return $this->makeTmpFileWrapper($file->mime(), $content);
     }
 }

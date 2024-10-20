@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
+use Stringable;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\StorageManager;
 use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileActions;
 use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileInfo;
 
-class FileWrapper
+class FileWrapper implements Stringable
 {
     use FileActions;
     use FileInfo;
@@ -66,5 +67,10 @@ class FileWrapper
     public function sync()
     {
         return $this->manager->sync($this);
+    }
+
+    public function working(): FileWrapper
+    {
+        return $this->manager()->working($this);
     }
 }

@@ -85,4 +85,19 @@ trait FileInfo
     {
         return $this->manager()->isLocal($this);
     }
+
+    public function fullPath(): string
+    {
+        return $this->manager()->fullPath($this);
+    }
+
+    public function __toString(): string
+    {
+        return $this->path();
+    }
+
+    public function toKey(): string
+    {
+        return $this->storage().':'.$this->path();
+    }
 }

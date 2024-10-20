@@ -10,6 +10,7 @@ use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
 use Vaskiq\LaravelFileLayer\StorageManager;
 use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
+use Vaskiq\LaravelFileLayer\TmpFilesManager;
 
 class LaravelFileLayerServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,8 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(StorageOperator::class);
         $this->app->singleton(StorageManager::class);
         $this->app->singleton(FileRepository::class);
+
+        $this->app->singleton(TmpFilesManager::class);
     }
 
     public function boot(): void
