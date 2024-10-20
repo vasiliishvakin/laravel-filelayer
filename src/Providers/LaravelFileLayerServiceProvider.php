@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Vaskiq\LaravelFileLayer\Facades\Mime;
 use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
+use Vaskiq\LaravelFileLayer\Services\ConfigPreprocessor;
 use Vaskiq\LaravelFileLayer\StorageManager;
 use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
 use Vaskiq\LaravelFileLayer\TmpFilesManager;
@@ -24,6 +24,8 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(FileRepository::class);
 
         $this->app->singleton(TmpFilesManager::class);
+
+        $this->app->singleton(ConfigPreprocessor::class);
     }
 
     public function boot(): void
@@ -31,9 +33,6 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         // Bootstrapping logic, such as publishing config files or migrations.
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
-        $this->app->booting(function () {
-            $loader = \Illuminate\Foundation\AliasLoader::getInstance();
-            $loader->alias('Mime', Mime::class);
-        });
+        ($this->app->make(ConfigPreprocessor::class))();
     }
 }

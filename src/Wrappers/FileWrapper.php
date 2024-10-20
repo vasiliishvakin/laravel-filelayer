@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
+use Illuminate\Support\Facades\App;
 use Stringable;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\StorageManager;
@@ -23,9 +24,16 @@ class FileWrapper implements Stringable
     ];
 
     public function __construct(
-        protected readonly StorageManager $manager,
         protected FileData $data,
+        protected readonly StorageManager $manager,
     ) {}
+
+    public static function fromData(FileData $data, ?StorageManager $manager = null): self
+    {
+        $manager ??= App::make(StorageManager::class);
+
+        return new self($data, $manager);
+    }
 
     public function data(): FileData
     {

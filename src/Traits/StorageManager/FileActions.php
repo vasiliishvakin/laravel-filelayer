@@ -21,9 +21,9 @@ trait FileActions
             $file->refresh();
         }
 
-        $this->getFileRepository()->save($file->data());
+        $fileData = $this->getFileRepository()->save($file->data());
 
-        return $file;
+        return $this->makeFileWrapper($fileData);
     }
 
     public function relocate(FileWrapper $file, ?string $storageName = null, $options = []): FileWrapper
@@ -88,11 +88,11 @@ trait FileActions
     public function delete(FileWrapper $file): bool
     {
         $storage = $this->getStorageOperator()->storage($file->storage());
-        if (! $storage->delete($file->path())) {
-            throw new \Exception(sprintf('Failed to delete file from storage %s', $storage->name));
-        }
+        $deletedInStorage = $storage->exists($file->path()) ? $storage->delete($file->path()) : true;
 
-        return $this->getFileRepository()->delete($file->id());
+        $deletedInDb = $file->id() !== null ? $this->getFileRepository()->delete($file->id()) : true;
+
+        return $deletedInStorage && $deletedInDb;
     }
 
     public function put(string $path, string $content, ?string $storageName = null): FileWrapper

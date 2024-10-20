@@ -16,7 +16,6 @@ class TmpFilesManager
 
     public function __construct(
         private readonly StorageOperator $storageOperator,
-        private readonly StorageManager $defaultStorageManager,
     ) {
         $this->registerShutdownHandler();
     }
@@ -38,9 +37,8 @@ class TmpFilesManager
 
     public function create(?string $content = null, ?string $mime = null, ?StorageManager $manager = null): TmpFileWrapper
     {
-        $manager ??= $this->defaultStorageManager;
+        $file = TmpFileWrapper::fromContent($content, $mime);
 
-        $file = new TmpFileWrapper($manager, $mime, $content);
         if ($this->existByKey($file->toKey())) {
             throw TmpFileExistsException::fromPath($file->path(), $file->storage());
         }

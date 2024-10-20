@@ -45,7 +45,7 @@ class StorageManager
 
     protected function makeFileWrapper(FileData $fileData): FileWrapper
     {
-        return new FileWrapper($this, $fileData);
+        return FileWrapper::fromData($fileData, $this);
     }
 
     protected function makeTmpFileWrapper(

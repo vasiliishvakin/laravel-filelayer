@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
@@ -24,7 +25,20 @@ class TmpFileWrapper extends FileWrapper
             'mime' => $mime,
         ]);
 
-        parent::__construct($manager, $tmpData);
+        parent::__construct($tmpData, $manager);
+    }
+
+    /** not implemented for tmp file */
+    public static function fromData(FileData $data, ?StorageManager $manager = null): self
+    {
+        throw new \RuntimeException('Cannot create a temporary file from data');
+    }
+
+    public static function fromContent(?string $mime = null, ?string $content = null, ?StorageManager $manager = null): self
+    {
+        $manager ??= App::make(StorageManager::class);
+
+        return new static($manager, $mime, $content);
     }
 
     protected function create(StorageManager $manager, string $extension, string $content): string

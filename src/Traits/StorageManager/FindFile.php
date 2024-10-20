@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Traits\StorageManager;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
+use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 trait FindFile
@@ -45,6 +46,9 @@ trait FindFile
             return $this->makeFileWrapper($fileData);
         }
         foreach ($this->getStorageOperator()->storages() as $storage) {
+            if ($storage->name === StorageOperator::TMP_STORAGE_NAME) {
+                continue;
+            }
             if ($storage->exists($path)) {
                 $fileData = FileData::from([
                     'path' => $path,
@@ -54,5 +58,7 @@ trait FindFile
                 return $this->makeFileWrapper($fileData);
             }
         }
+
+        return null;
     }
 }

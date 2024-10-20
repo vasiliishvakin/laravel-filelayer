@@ -13,7 +13,7 @@ class StorageOperator
 {
     public const TMP_STORAGE_NAME = 'tmp';
 
-    protected const CONFIG_DISKS_KEY = 'filesystems.disks';
+    public const CONFIG_DISKS_KEY = 'filesystems.disks';
 
     protected readonly array $storagesConfig;
 
