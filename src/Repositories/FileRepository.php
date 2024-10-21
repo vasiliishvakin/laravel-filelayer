@@ -18,11 +18,17 @@ class FileRepository extends EloquentRepository
         parent::__construct($model, $dataFactory);
     }
 
-    public function findByPath(string $path): ?FileData
+    public function findByPath(string $path, ?string $storage = null): ?FileData
     {
-        $model = $this->query()->where('path', $path)
-            ->orWhere('alias', $path)
-            ->first();
+        $query = $this->query()->where(function ($query) use ($path) {
+            $query->where('path', $path)
+                ->orWhere('alias', $path);
+        });
+
+        if ($storage) {
+            $query->where('storage', $storage);
+        }
+        $model = $query->first();
 
         return $model ? $this->toData($model) : null;
     }

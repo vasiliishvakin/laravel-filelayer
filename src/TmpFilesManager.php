@@ -37,7 +37,7 @@ class TmpFilesManager
 
     public function create(?string $content = null, ?string $mime = null, ?StorageManager $manager = null): TmpFileWrapper
     {
-        $file = TmpFileWrapper::fromContent($content, $mime);
+        $file = TmpFileWrapper::fromContent(content: $content, mime: $mime);
 
         if ($this->existByKey($file->toKey())) {
             throw TmpFileExistsException::fromPath($file->path(), $file->storage());

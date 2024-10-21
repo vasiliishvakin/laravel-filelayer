@@ -77,8 +77,18 @@ class FileWrapper implements Stringable
         return $this->manager->sync($this);
     }
 
-    public function working(): FileWrapper
+    public function working(): static
     {
         return $this->manager()->working($this);
+    }
+
+    public function process(array $actions): static
+    {
+        return $this->manager()->process($this, $actions);
+    }
+
+    public function processTo(array $actions): static
+    {
+        return $this->manager()->processTo($this, $actions);
     }
 }

@@ -100,4 +100,9 @@ trait FileInfo
     {
         return $this->storage().':'.$this->path();
     }
+
+    public function content(): string
+    {
+        return $this->manager()->content($this);
+    }
 }

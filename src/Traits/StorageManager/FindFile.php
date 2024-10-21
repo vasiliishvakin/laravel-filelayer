@@ -39,12 +39,17 @@ trait FindFile
         throw new \Exception('File not found');
     }
 
-    public function fileByPath(string $path): ?FileWrapper
+    public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper
     {
-        $fileData = $this->getFileRepository()->findByPath($path);
+        $fileData = $this->getFileRepository()->findByPath($path, $storageName);
         if ($fileData?->storage) {
+            if (! is_null($storageName) && $fileData->storage !== $storageName) {
+                return null;
+            }
+
             return $this->makeFileWrapper($fileData);
         }
+
         foreach ($this->getStorageOperator()->storages() as $storage) {
             if ($storage->name === StorageOperator::TMP_STORAGE_NAME) {
                 continue;

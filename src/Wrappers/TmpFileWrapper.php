@@ -55,7 +55,7 @@ class TmpFileWrapper extends FileWrapper
         return $fileName;
     }
 
-    public function working(): self
+    public function working(): static
     {
         return $this;
     }

@@ -49,8 +49,8 @@ class StorageManager
     }
 
     protected function makeTmpFileWrapper(
+        ?string $mime = null,
         ?string $content = null,
-        ?string $mime = null
     ): TmpFileWrapper {
         return TmpFile::create(content: $content, mime: $mime);
     }

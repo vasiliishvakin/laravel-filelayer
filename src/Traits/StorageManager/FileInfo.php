@@ -67,4 +67,9 @@ trait FileInfo
     {
         return $this->fileStorage($file)->path($this->filePath($file));
     }
+
+    public function content(FileWrapper $file): string
+    {
+        return $this->fileStorage($file)->get($this->filePath($file));
+    }
 }
