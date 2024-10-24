@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
 use Vaskiq\LaravelFileLayer\Services\ConfigPreprocessor;
+use Vaskiq\LaravelFileLayer\Services\UploadFilesService;
 use Vaskiq\LaravelFileLayer\StorageManager;
 use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
 use Vaskiq\LaravelFileLayer\TmpFilesManager;
@@ -26,6 +27,8 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(TmpFilesManager::class);
 
         $this->app->singleton(ConfigPreprocessor::class);
+
+        $this->app->singleton(UploadFilesService::class);
     }
 
     public function boot(): void
