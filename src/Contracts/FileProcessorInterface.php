@@ -9,5 +9,5 @@ use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 interface FileProcessorInterface
 {
-    public function handle(FileWrapper $file, Closure $next);
+    public function handle(FileWrapper $file, Closure $next): FileWrapper;
 }

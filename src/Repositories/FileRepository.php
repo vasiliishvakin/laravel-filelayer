@@ -9,6 +9,9 @@ use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Models\File;
 
+/**
+ * @method FileData toData(mixed $model)
+ */
 class FileRepository extends EloquentRepository
 {
     protected string $dataClass = FileData::class;
@@ -22,6 +25,7 @@ class FileRepository extends EloquentRepository
     {
         $query = $this->query()->where(function ($query) use ($path) {
             $query->where('path', $path)
+                ->orWhere('source', $path)
                 ->orWhere('alias', $path);
         });
 

@@ -4,4 +4,6 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Contracts;
 
-interface FileWrapperInterface {}
+use Stringable;
+
+interface FileWrapperInterface extends Stringable {}

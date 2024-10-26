@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\Facade;
 use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 
 /**
- * @method static getExtensions(string $mimeType): array
- * @method static function getMimeTypes(string $ext): array
- * @method static function extension(string $mimeType): string
+ * @method static array getExtensions(string $mimeType)
+ * @method static array getMimeTypes(string $ext)
+ * @method static string extension(string $mimeType)
  */
 class Mime extends Facade
 {

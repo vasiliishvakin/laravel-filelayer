@@ -21,9 +21,9 @@ class FileData extends Data
         #[WithCast(DateTimeInterfaceCast::class)]
         public readonly ?CarbonImmutable $last_modified,
 
-        public readonly ?string $source_name,
+        public readonly ?string $source = null,
         public readonly ?string $alias = null,
-        public readonly ?array $metadata = null,
+        public readonly ?array $metadata = [],
 
         public readonly ?string $url = null,
 

@@ -7,14 +7,14 @@ namespace Vaskiq\LaravelFileLayer\Services;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Vaskiq\LaravelFileLayer\FileLayer;
 use Vaskiq\LaravelFileLayer\Helpers\BinaryDataHelper;
-use Vaskiq\LaravelFileLayer\StorageManager;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 class UploadFilesService
 {
     public function __construct(
-        protected readonly StorageManager $manager,
+        protected readonly FileLayer $manager,
         protected readonly Request $request
     ) {}
 
@@ -40,7 +40,9 @@ class UploadFilesService
 
         $pathInfo = pathinfo($newPath);
         if (isset($pathInfo['extension'])) {
-            $newPath = $pathInfo['dirname'] !== '.' ? $pathInfo['dirname'].'/' : '';
+            $newPath = (isset($pathInfo['dirname']) && $pathInfo['dirname'] !== '.')
+                ? $pathInfo['dirname'].'/'
+                : '';
         }
 
         if ($fileName === null) {
@@ -91,7 +93,7 @@ class UploadFilesService
     }
 
     /**
-     * @return FileWrapper|Collection<FileWrapper>
+     * @return FileWrapper|Collection<int, FileWrapper>
      */
     public function uploadRequestFile(string $fieldName): FileWrapper|Collection
     {
@@ -111,7 +113,12 @@ class UploadFilesService
 
         $uploaded = collect($files)->map(fn ($file) => $this->uploadLaravelUploaded($file));
 
-        return $uploaded->count() === 1 ? $uploaded->first() : $uploaded;
+        $result = $uploaded->count() === 1 ? $uploaded->first() : $uploaded;
+        if (is_null($result)) {
+            throw new \RuntimeException('Failed to upload file(s).');
+        }
+
+        return $result;
     }
 
     public function uploadBase64File(string $base64, ?string $newPath = null, ?string $newFileName = null): FileWrapper

@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Vaskiq\LaravelFileLayer\FileLayer;
 use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
 use Vaskiq\LaravelFileLayer\Services\ConfigPreprocessor;
 use Vaskiq\LaravelFileLayer\Services\UploadFilesService;
-use Vaskiq\LaravelFileLayer\StorageManager;
-use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
-use Vaskiq\LaravelFileLayer\TmpFilesManager;
+use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
+use Vaskiq\LaravelFileLayer\TmpFileLayer;
 
 class LaravelFileLayerServiceProvider extends ServiceProvider
 {
@@ -21,10 +21,10 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(MimeHelper::class);
 
         $this->app->singleton(StorageOperator::class);
-        $this->app->singleton(StorageManager::class);
+        $this->app->singleton(FileLayer::class);
         $this->app->singleton(FileRepository::class);
 
-        $this->app->singleton(TmpFilesManager::class);
+        $this->app->singleton(TmpFileLayer::class);
 
         $this->app->singleton(ConfigPreprocessor::class);
 
@@ -35,6 +35,10 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
     {
         // Bootstrapping logic, such as publishing config files or migrations.
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+
+        $this->publishes([
+            __DIR__.'/../config/filelayer.php' => config_path('filelayer.php'),
+        ]);
 
         ($this->app->make(ConfigPreprocessor::class))();
     }

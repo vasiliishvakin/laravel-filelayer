@@ -2,46 +2,28 @@
 
 declare(strict_types=1);
 
-namespace Vaskiq\LaravelFileLayer\Traits\StorageManager;
+namespace Vaskiq\LaravelFileLayer\FileLayer\Traits;
 
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Facades\App;
 use Stringable;
+use Vaskiq\LaravelFileLayer\Contracts\FileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Generators\FileName\FileNameGeneratorByActions;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
-use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
 trait FileActions
 {
     use FileInfo;
-    use FindFile;
+    use WithFileRepository;
+    use WithFileWrappers;
+    use WithStorageOperator;
 
-    abstract public function makeTmpFileWrapper(string $mime, ?string $content = null): TmpFileWrapper;
-
-    public function getPipeline(): Pipeline
-    {
-        return App::make(Pipeline::class);
-    }
-
-    public function register(FileWrapper $file, bool $forceRefresh = false): FileWrapper
-    {
-        if ($forceRefresh || $file->incomplete()) {
-            $file->refresh();
-        }
-
-        $fileData = $this->getFileRepository()->save($file->data());
-
-        return $this->makeFileWrapper($fileData);
-    }
-
-    public function relocate(FileWrapper $file, ?string $storageName = null, $options = []): FileWrapper
+    public function relocate(FileWrapper $file, ?string $storageName = null, array $options = []): FileWrapper
     {
         $fileData = $file->data();
 
-        $storage = $this->getStorageOperator()->storage($storageName);
-
-        $sourceName = $file->name();
+        $storage = $this->storageOperator()->storage($storageName);
 
         $newPath = $storage->putFileAs(
             path: $file->directory(),
@@ -49,11 +31,17 @@ trait FileActions
             name: $file->name(),
         );
 
+        if (! $newPath) {
+            throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
+        }
+
+        $source = $file->path() !== $newPath ? $file->path() : null;
+
         $fileData = FileData::from([
             ...$fileData->toArray(),
             'path' => $newPath,
             'storage' => $storage->name,
-            'source_name' => $sourceName,
+            'source' => $source,
         ]);
 
         return $this->makeFileWrapper($fileData);
@@ -68,8 +56,8 @@ trait FileActions
             $dirty = true;
         }
 
-        if ($file->storage() !== $this->getStorageOperator()->mainStorageName) {
-            $file = $this->relocate($file, $this->getStorageOperator()->mainStorageName);
+        if ($file->storage() !== $this->storageOperator()->mainStorageName) {
+            $file = $this->relocate($file, $this->storageOperator()->mainStorageName);
             $dirty = true;
         }
 
@@ -80,26 +68,19 @@ trait FileActions
         return $file;
     }
 
-    public function exists(FileWrapper $file): bool
-    {
-        $storage = $this->getStorageOperator()->storage($file->storage());
-
-        return $storage->exists($file->path());
-    }
-
     public function get(FileWrapper $file): ?string
     {
-        $storage = $this->getStorageOperator()->storage($file->storage());
+        $storage = $this->storageOperator()->storage($file->storage());
 
         return $storage->get($file->path());
     }
 
     public function delete(FileWrapper $file): bool
     {
-        $storage = $this->getStorageOperator()->storage($file->storage());
+        $storage = $this->storageOperator()->storage($file->storage());
         $deletedInStorage = $storage->exists($file->path()) ? $storage->delete($file->path()) : true;
 
-        $deletedInDb = $file->id() !== null ? $this->getFileRepository()->delete($file->id()) : true;
+        $deletedInDb = $file->id() !== null ? $this->fileRepository()->delete($file->id()) : true;
 
         return $deletedInStorage && $deletedInDb;
     }
@@ -108,7 +89,7 @@ trait FileActions
     {
         $this->fileByPath($path)?->delete();
 
-        $storage = $this->getStorageOperator()->storage($storageName);
+        $storage = $this->storageOperator()->storage($storageName);
 
         if (! $storage->put($path, $content)) {
             throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
@@ -135,7 +116,7 @@ trait FileActions
         $newPath = $newPath ?? $file->path();
         $newStorage = $newStorage ?? $file->storage();
 
-        $storageOperator = $this->getStorageOperator()->storage($newStorage);
+        $storageOperator = $this->storageOperator()->storage($newStorage);
         $newDir = dirname($newPath);
         $newFileName ??= basename($newPath);
 
@@ -144,13 +125,13 @@ trait FileActions
         $fileWrapper = $this->makeFileWrapper(FileData::from([
             'path' => $newPath,
             'storage' => $storageOperator->name,
-            'alias' => $newPath !== $file->path() ? $file->path() : null,
+            'source' => $newPath !== $file->path() ? $file->path() : null,
         ]));
 
         return $this->register($fileWrapper);
     }
 
-    public function working(FileWrapper $file): FileWrapper
+    public function working(FileWrapper $file): FileWrapper|FileWrapperInterface
     {
         if ($file->isLocal()) {
             return $file;
@@ -179,7 +160,7 @@ trait FileActions
         return $workingFile;
     }
 
-    public function process(FileWrapper $file, array $actions): FileWrapper
+    public function process(FileWrapper $file, array $actions): FileWrapper|FileWrapperInterface
     {
         if (empty($actions)) {
             return $file;
@@ -193,24 +174,11 @@ trait FileActions
             ->thenReturn();
     }
 
-    protected function generatePathForActions(FileWrapper $file, array $actions, string|Stringable|callable|null $newPath = null): string
-    {
-        $newPath = $newPath ?? FileNameGeneratorByActions::class;
-
-        return (string) match (true) {
-            class_exists($newPath) => (new $newPath)($file, $actions),
-            is_string($newPath) => $newPath,
-            $newPath instanceof \Stringable => $newPath,
-            is_callable($newPath) => $newPath($file, $actions),
-            default => throw new \Exception(sprintf('Invalid type of new path argument (%s)', gettype($newPath))),
-        };
-    }
-
     public function processTo(
         FileWrapper $file,
         array $actions,
         string|Stringable|callable|null $newPath = null
-    ): FileWrapper {
+    ): FileWrapper|FileWrapperInterface {
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
 
         if ($existingFile = $this->fileByPath($newPath, $file->storage())) {
@@ -229,5 +197,41 @@ trait FileActions
             ->then(
                 fn ($file) => $this->put($newPath, $file->content())
             );
+    }
+
+    private function getPipeline(): Pipeline
+    {
+        return App::make(Pipeline::class);
+    }
+
+    private function register(FileWrapper $file, bool $forceRefresh = false): FileWrapper
+    {
+        if ($forceRefresh || $file->incomplete()) {
+            $file->refresh();
+        }
+
+        /** @var FileData */
+        $fileData = $this->fileRepository()->save($file->data());
+
+        return $this->makeFileWrapper($fileData);
+    }
+
+    private function generatePathForActions(FileWrapper $file, array $actions, string|Stringable|callable|null $newPath = null): string
+    {
+        $newPath = $newPath ?? FileNameGeneratorByActions::class;
+
+        return (string) match (true) {
+            $newPath instanceof \Stringable => (string) $newPath,
+            is_callable($newPath) => $newPath($file, $actions),
+            class_exists($newPath) => (function () use ($newPath, $file, $actions) {
+                $pathGenerator = App::make($newPath);
+                if (! is_callable($pathGenerator)) {
+                    throw new \InvalidArgumentException('Path generator must be callable.');
+                }
+
+                return $pathGenerator($file, $actions);
+            })(),
+            is_string($newPath) => $newPath,
+        };
     }
 }

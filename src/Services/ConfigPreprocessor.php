@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Services;
 
 use Illuminate\Support\Facades\Cache;
-use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
+use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 
 class ConfigPreprocessor
 {
     public const CACHE_KEY = 'filtered_disks_config';
-
-    private const CACHE_TTL = 0;
 
     public function __invoke(): void
     {
@@ -20,11 +18,11 @@ class ConfigPreprocessor
 
     public function apply(): void
     {
+        $cacheTtl = (int) config('filelayer.preprocessor-config.cache.ttl', 0);
 
-        $filteredConfig = self::CACHE_TTL > 0
-            ? Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
-                return $this->filterConfig();
-            })
+        $filteredConfig =
+            $cacheTtl > 0
+            ? Cache::remember(self::CACHE_KEY, $cacheTtl, fn () => $this->filterConfig())
             : $this->filterConfig();
 
         config([StorageOperator::CONFIG_DISKS_KEY => $filteredConfig]);

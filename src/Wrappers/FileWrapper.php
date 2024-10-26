@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
 use Illuminate\Support\Facades\App;
-use Stringable;
+use Vaskiq\LaravelFileLayer\Contracts\FileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\FileData;
-use Vaskiq\LaravelFileLayer\StorageManager;
+use Vaskiq\LaravelFileLayer\FileLayer;
 use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileActions;
 use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileInfo;
 
-class FileWrapper implements Stringable
+class FileWrapper implements FileWrapperInterface
 {
     use FileActions;
     use FileInfo;
@@ -25,12 +25,12 @@ class FileWrapper implements Stringable
 
     public function __construct(
         protected FileData $data,
-        protected readonly StorageManager $manager,
+        protected readonly FileLayer $manager,
     ) {}
 
-    public static function fromData(FileData $data, ?StorageManager $manager = null): self
+    public static function fromData(FileData $data, ?FileLayer $manager = null): self
     {
-        $manager ??= App::make(StorageManager::class);
+        $manager ??= App::make(FileLayer::class);
 
         return new self($data, $manager);
     }
@@ -40,7 +40,7 @@ class FileWrapper implements Stringable
         return $this->data;
     }
 
-    public function manager(): StorageManager
+    public function manager(): FileLayer
     {
         return $this->manager;
     }
@@ -49,7 +49,7 @@ class FileWrapper implements Stringable
     {
         $data = $this->data();
         foreach (self::REFRESHED_PROPERTIES as $property) {
-            if (! property_exists($data, $property) || $data?->$property === null) {
+            if (! property_exists($data, $property) || $data->$property === null) {
                 return true;
             }
         }
@@ -72,22 +72,27 @@ class FileWrapper implements Stringable
         return $this;
     }
 
-    public function sync()
+    public function misplaced(): bool
+    {
+        return $this->manager->misplaced($this);
+    }
+
+    public function sync(): FileWrapper
     {
         return $this->manager->sync($this);
     }
 
-    public function working(): static
+    public function working(): static|FileWrapperInterface
     {
         return $this->manager()->working($this);
     }
 
-    public function process(array $actions): static
+    public function process(array $actions): static|FileWrapperInterface
     {
         return $this->manager()->process($this, $actions);
     }
 
-    public function processTo(array $actions): static
+    public function processTo(array $actions): static|FileWrapperInterface
     {
         return $this->manager()->processTo($this, $actions);
     }

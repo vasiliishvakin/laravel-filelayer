@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Wrappers\Traits;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
-use Vaskiq\LaravelFileLayer\StorageManager;
+use Vaskiq\LaravelFileLayer\FileLayer;
 
 trait FileActions
 {
     abstract public function data(): FileData;
 
-    abstract public function manager(): StorageManager;
+    abstract public function manager(): FileLayer;
 
     public function get(): ?string
     {

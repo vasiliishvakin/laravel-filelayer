@@ -20,13 +20,14 @@ return new class extends Migration
             $table->string('mime');
             $table->unsignedBigInteger('size');
             $table->timestamp('last_modified');
-            $table->string('source_name')->nullable();
+            $table->string('source')->nullable();
             $table->string('alias')->nullable();
             $table->string('url')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
 
             $table->unique('path');
+            $table->unique('source');
             $table->unique('alias');
         });
     }

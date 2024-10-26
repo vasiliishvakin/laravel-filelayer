@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Vaskiq\LaravelFileLayer\StorageTools;
+namespace Vaskiq\LaravelFileLayer\Storage;
 
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -15,13 +15,11 @@ class StorageOperator
 
     public const CONFIG_DISKS_KEY = 'filesystems.disks';
 
+    public readonly string $mainStorageName;
+
     protected readonly array $storagesConfig;
 
     protected readonly array $storagesNames;
-
-    // protected readonly StorageWrapper $mainStorage;
-
-    public readonly string $mainStorageName;
 
     private array $initStorages = [];
 
@@ -31,27 +29,18 @@ class StorageOperator
     ) {
         $storages = $this->config->get(self::CONFIG_DISKS_KEY, []);
         uasort($storages, fn ($a, $b) => ($a['priority'] ?? PHP_INT_MAX) <=> ($b['priority'] ?? PHP_INT_MAX));
-        $this->storagesConfig = $storages;
-        $this->storagesNames = array_keys($storages);
 
         $defaultStorage = $this->config->get('filesystems.default');
         if ($storages[$defaultStorage]['read_only'] ?? false) {
             throw new \Exception('Default storage is read-only');
         }
 
+        //TODO: in the future we can use multiple main storages fo shards
+        $this->initStorages[$defaultStorage] = $this->makeStorageWrapper($defaultStorage);
+
+        $this->storagesConfig = $storages;
+        $this->storagesNames = array_keys($storages);
         $this->mainStorageName = $defaultStorage;
-
-        //idea: in the future we can use multiple main storages fo shards
-
-        $this->initStorages[$this->mainStorageName] = $this->makeStorageWrapper($defaultStorage);
-    }
-
-    protected function makeStorageWrapper(string $name): StorageWrapper
-    {
-        return new StorageWrapper(
-            name: $name,
-            storage: $this->filesystemFactory->disk($name),
-        );
     }
 
     public function config(?string $name = null): ?array
@@ -64,7 +53,7 @@ class StorageOperator
         return $this->storage($this->mainStorageName);
     }
 
-    public function storage($name = null): StorageWrapper
+    public function storage(?string $name = null): StorageWrapper
     {
         $name = $name ?: $this->mainStorageName;
 
@@ -72,7 +61,7 @@ class StorageOperator
     }
 
     /**
-     * @return Iterator|StorageWrapper[]
+     * @return \Iterator|StorageWrapper[]
      */
     public function storages(): \Iterator
     {
@@ -98,12 +87,12 @@ class StorageOperator
 
     public function isMain(StorageWrapper $storage): bool
     {
-        return $storage->name() === $this->mainStorageName;
+        return $storage->name === $this->mainStorageName;
     }
 
     public function isReadOnly(StorageWrapper $storage): bool
     {
-        return $this->config($storage->name())['read_only'] ?? false;
+        return $this->config($storage->name)['read_only'] ?? false;
     }
 
     public function isWritable(StorageWrapper $storage): bool
@@ -146,5 +135,13 @@ class StorageOperator
         }
 
         return $this->initStorages[self::TMP_STORAGE_NAME] = $this->makeStorageWrapper(self::TMP_STORAGE_NAME);
+    }
+
+    protected function makeStorageWrapper(string $name): StorageWrapper
+    {
+        return new StorageWrapper(
+            name: $name,
+            storage: $this->filesystemFactory->disk($name),
+        );
     }
 }

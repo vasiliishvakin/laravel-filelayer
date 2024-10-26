@@ -2,30 +2,32 @@
 
 declare(strict_types=1);
 
-namespace Vaskiq\LaravelFileLayer\Traits\StorageManager;
+namespace Vaskiq\LaravelFileLayer\FileLayer\Traits;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
-use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
+use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 trait FindFile
 {
-    use BaseObjectsAccessors;
+    use WithFileRepository;
+    use WithFileWrappers;
+    use WithStorageOperator;
 
     public function file(int $id): FileWrapper
     {
         /** @var FileData */
-        $fileData = $this->getFileRepository()->findOrFail($id);
+        $fileData = $this->fileRepository()->findOrFail($id);
 
         if ($fileData->storage) {
-            if (! $this->getStorageOperator()->storage($fileData->storage)->exists($fileData->path)) {
+            if (! $this->storageOperator()->storage($fileData->storage)->exists($fileData->path)) {
                 throw new \Exception('File not found');
             }
 
             return $this->makeFileWrapper($fileData);
         }
 
-        foreach ($this->getStorageOperator()->storages() as $storageName => $storage) {
+        foreach ($this->storageOperator()->storages() as $storageName => $storage) {
             if ($storage->exists($fileData->path)) {
                 $fileDataWithStorage = FileData::from([
                     ...$fileData->toArray(),
@@ -41,7 +43,7 @@ trait FindFile
 
     public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper
     {
-        $fileData = $this->getFileRepository()->findByPath($path, $storageName);
+        $fileData = $this->fileRepository()->findByPath($path, $storageName);
         if ($fileData?->storage) {
             if (! is_null($storageName) && $fileData->storage !== $storageName) {
                 return null;
@@ -50,7 +52,7 @@ trait FindFile
             return $this->makeFileWrapper($fileData);
         }
 
-        foreach ($this->getStorageOperator()->storages() as $storage) {
+        foreach ($this->storageOperator()->storages() as $storage) {
             if ($storage->name === StorageOperator::TMP_STORAGE_NAME) {
                 continue;
             }

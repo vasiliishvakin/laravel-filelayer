@@ -8,13 +8,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\File as LaravelFile;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
-use Vaskiq\LaravelFileLayer\StorageManager;
+use Vaskiq\LaravelFileLayer\FileLayer;
 
 trait FileInfo
 {
     abstract public function data(): FileData;
 
-    abstract public function manager(): StorageManager;
+    abstract public function manager(): FileLayer;
 
     public function id(): ?int
     {
@@ -101,7 +101,7 @@ trait FileInfo
         return $this->storage().':'.$this->path();
     }
 
-    public function content(): string
+    public function content(): ?string
     {
         return $this->manager()->content($this);
     }

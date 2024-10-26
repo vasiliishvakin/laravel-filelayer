@@ -8,14 +8,15 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Str;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
-use Vaskiq\LaravelFileLayer\StorageManager;
-use Vaskiq\LaravelFileLayer\StorageTools\StorageOperator;
+use Vaskiq\LaravelFileLayer\FileLayer;
+use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
+use Vaskiq\LaravelFileLayer\TmpFileLayer;
 
 class TmpFileWrapper extends FileWrapper
 {
-    public function __construct(StorageManager $manager, ?string $mime = null, ?string $content = null)
+    public function __construct(FileLayer $manager, ?string $mime = null, ?string $content = null)
     {
-        $mime = $data->mime ?? 'text/plain';
+        $mime = $mime ?? 'text/plain';
         $extension = Mime::extension($mime);
         $filePath = $this->create($manager, $extension, $content);
 
@@ -29,21 +30,27 @@ class TmpFileWrapper extends FileWrapper
     }
 
     /** not implemented for tmp file */
-    public static function fromData(FileData $data, ?StorageManager $manager = null): self
+    public static function fromData(FileData $data, ?FileLayer $manager = null): self
     {
         throw new \RuntimeException('Cannot create a temporary file from data');
     }
 
-    public static function fromContent(?string $mime = null, ?string $content = null, ?StorageManager $manager = null): self
+    public static function fromContent(?string $mime = null, ?string $content = null, ?TmpFileLayer $manager = null): self
     {
-        $manager ??= App::make(StorageManager::class);
+        $manager ??= App::make(TmpFileLayer::class);
 
         return new static($manager, $mime, $content);
     }
 
-    protected function create(StorageManager $manager, string $extension, string $content): string
+    public function working(): static
     {
-        $tmpStorage = $manager->getStorageOperator()->tmp();
+        return $this;
+    }
+
+    protected function create(FileLayer $manager, string $extension, ?string $content = null): string
+    {
+        $content ??= '';
+        $tmpStorage = $manager->tmpStorage();
         do {
             $fileName = Str::ulid().'.'.$extension;
         } while ($tmpStorage->exists($fileName));
@@ -53,10 +60,5 @@ class TmpFileWrapper extends FileWrapper
         }
 
         return $fileName;
-    }
-
-    public function working(): static
-    {
-        return $this;
     }
 }

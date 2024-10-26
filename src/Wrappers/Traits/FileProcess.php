@@ -6,10 +6,10 @@ namespace Vaskiq\LaravelFileLayer\Wrappers\Traits;
 
 trait FileProcess
 {
-    protected string $workingPath;
-
     use FileActions;
     use FileInfo;
+
+    protected string $workingPath;
 
     public function getWorkingPath(): string
     {

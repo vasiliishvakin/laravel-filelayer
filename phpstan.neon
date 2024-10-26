@@ -1,20 +1,19 @@
 parameters:
-    level: 1
+    level: 8
 
     paths:
-        - %currentWorkingDirectory%
+        - %currentWorkingDirectory%/src
 
     excludePaths:
-        - %currentWorkingDirectory%/docs
-        - %currentWorkingDirectory%/node_modules
-        - %currentWorkingDirectory%/vendor
-        - %currentWorkingDirectory%/_*
+        - %currentWorkingDirectory%/src/vendor
+        - %currentWorkingDirectory%/src/_*
 
     # Other PHPStan settings
     ignoreErrors:
         # Add rules to ignore specific errors if needed
         #- '#Some specific error to ignore#'
         - identifier: new.static
+        - identifier: missingType.iterableValue
 
     scanFiles:
         # Include any custom rules or types you may need
