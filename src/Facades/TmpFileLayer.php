@@ -6,16 +6,16 @@ namespace Vaskiq\LaravelFileLayer\Facades;
 
 use Illuminate\Support\Facades\Facade;
 use Vaskiq\LaravelFileLayer\FileLayer;
-use Vaskiq\LaravelFileLayer\TmpFileLayer;
+use Vaskiq\LaravelFileLayer\TmpFileLayer as TmpFileLayerClass;
 use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
 /**
  * @method static TmpFileWrapper create(?string $content = null, ?string $mime = null, ?FileLayer $manager = null)
  */
-class TmpFile extends Facade
+class TmpFileLayer extends Facade
 {
     protected static function getFacadeAccessor()
     {
-        return TmpFileLayer::class;
+        return TmpFileLayerClass::class;
     }
 }

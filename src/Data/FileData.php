@@ -8,6 +8,7 @@ use Carbon\CarbonImmutable;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
 use Spatie\LaravelData\Data;
+use Vaskiq\LaravelDataLayer\Data\Casts\JsonToArrayCast;
 
 class FileData extends Data
 {
@@ -23,6 +24,8 @@ class FileData extends Data
 
         public readonly ?string $source = null,
         public readonly ?string $alias = null,
+
+        #[WithCast(JsonToArrayCast::class)]
         public readonly ?array $metadata = [],
 
         public readonly ?string $url = null,
@@ -43,6 +46,8 @@ class FileData extends Data
         if (empty($data['updated_at'])) {
             unset($data['updated_at']);
         }
+
+        $data['metadata'] = ! empty($data['metadata']) ? json_encode($data['metadata'], JSON_UNESCAPED_UNICODE) : null;
 
         return $data;
     }
