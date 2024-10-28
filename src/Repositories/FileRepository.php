@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Repositories;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
 use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Models\File;
+use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 /**
  * @method FileData toData(mixed $model)
@@ -35,14 +37,23 @@ class FileRepository extends EloquentRepository
         return $this->queryByPath($path, $storage)->exists();
     }
 
+    /**
+     * @return Collection<int, string>
+     */
     public function pathsInDirectory(?string $directory, ?string $storage = null, ?int $limit = null, ?int $offset = null): Collection
     {
         return $this->queryByDirectory($directory, $storage)
+            // @phpstan-ignore argument.type
             ->when($limit, fn ($q) => $q->limit($limit))
+            // @phpstan-ignore argument.type
             ->when($offset, fn ($q) => $q->offset($offset))
             ->pluck('path');
     }
 
+    /**
+     * @param  Collection<int, string>  $paths
+     * @return Collection<int, string>
+     */
     public function pathsNotInDirectory(?string $directory, ?string $storage, Collection $paths): Collection
     {
         $inDirectory = $this->queryByDirectory($directory, $storage)
@@ -57,6 +68,9 @@ class FileRepository extends EloquentRepository
         return $this->queryByDirectory($directory, $storage)->count();
     }
 
+    /**
+     * @return Collection<int, FileWrapper>
+     */
     public function filesInDirectory(?string $directory = null, ?string $storage = null): Collection
     {
         $items = $this->queryByDirectory($directory, $storage)->get();
@@ -64,7 +78,10 @@ class FileRepository extends EloquentRepository
         return $this->toDataCollection($items);
     }
 
-    private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
+    /**
+     * @return Builder<File>
+     */
+    private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder|QueryBuilder
     {
         return $this->query()
             ->when($directory, fn ($q) => $q->where('directory', $directory))
@@ -72,6 +89,9 @@ class FileRepository extends EloquentRepository
             ->when($storage, fn ($q) => $q->where('storage', $storage));
     }
 
+    /**
+     * @return Builder<File>
+     */
     private function queryByPath(string $path, ?string $storage = null): Builder
     {
         return $this->query()

@@ -72,7 +72,7 @@ trait FindFile
                 $fileData = FileData::from([
                     'path' => $path,
                     'storage' => $storage->name,
-                    'directory' => $pathInfoData?->directory,
+                    'directory' => isset($pathInfoData) ? $pathInfoData->directory : null, //$pathInfoData?->directory,
                 ]);
 
                 return $this->makeFileWrapper($fileData);

@@ -10,7 +10,7 @@ trait WithFileRepository
 {
     abstract public function fileRepository(): FileRepository;
 
-    public function registeredByPath(string|array $path): bool
+    public function registeredByPath(string $path): bool
     {
         return $this->fileRepository()->existsByPath($path);
     }

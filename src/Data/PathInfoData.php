@@ -19,7 +19,7 @@ class PathInfoData extends Data
     public readonly ?string $extension;
 
     public function __construct(
-        public readonly ?string $path = null,
+        public readonly string $path,
         public readonly ?bool $isDirectory = null,
         string|false|null $directory = null,
         string|false|null $filename = null,
@@ -33,9 +33,12 @@ class PathInfoData extends Data
         $pathInfo = $this->getPathInfo($normalizedPath, $isDirectory);
 
         $this->normalizedPath = (string) $normalizedPath;
-        $this->directory = $directory ?? ($directory === false ? null : $pathInfo['directory']);
-        $this->filename = $filename ?? ($filename === false ? null : $pathInfo['filename']);
-        $this->extension = $extension ?? ($extension === false || $filename === false ? null : $pathInfo['extension']);
+
+        $this->directory = $directory === false ? null : ($directory ?? $pathInfo['directory']);
+        $this->filename = $filename === false ? null : ($filename ?? $pathInfo['filename']);
+        $this->extension = ($extension === false || $filename === false)
+            ? null
+            : ($extension ?? $pathInfo['extension']);
     }
 
     /**
@@ -47,9 +50,9 @@ class PathInfoData extends Data
      *                                  - false: Treat as a file.
      *                                  - null: Determine based on the path (slash-ending or extension).
      * @return array{
-     *     directory: string|null,  // Directory path or null if not applicable.
-     *     filename: string|null,   // Filename without path, or null if directory.
-     *     extension: string|null   // File extension or null if not a file.
+     *     directory: string|null,
+     *     filename: string|null,
+     *     extension: string|null,
      * }
      */
     private function getPathInfo(Stringable $path, ?bool $isDirectory = null): array
