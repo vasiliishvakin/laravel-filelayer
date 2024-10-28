@@ -15,14 +15,14 @@ trait WithStorageOperator
         return $this->storageOperator()->tmp();
     }
 
-    abstract private function storageOperator(): StorageOperator;
+    abstract public function storageOperator(): StorageOperator;
 
-    private function storageByName(?string $name = null): StorageWrapper
+    public function storageByName(?string $name = null): StorageWrapper
     {
         return $this->storageOperator()->storage($name);
     }
 
-    private function storageByFile(FileWrapper $file): StorageWrapper
+    public function storageByFile(FileWrapper $file): StorageWrapper
     {
         return $this->storageOperator()->storage($file->storage());
     }

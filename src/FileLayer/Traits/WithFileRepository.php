@@ -8,5 +8,10 @@ use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
 
 trait WithFileRepository
 {
-    abstract private function fileRepository(): FileRepository;
+    abstract public function fileRepository(): FileRepository;
+
+    public function registeredByPath(string|array $path): bool
+    {
+        return $this->fileRepository()->existsByPath($path);
+    }
 }

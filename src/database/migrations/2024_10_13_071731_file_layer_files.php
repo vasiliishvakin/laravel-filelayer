@@ -17,6 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('storage');
             $table->string('path');
+            $table->string('directory')->nullable();
             $table->string('mime');
             $table->unsignedBigInteger('size');
             $table->timestamp('last_modified');
@@ -29,6 +30,7 @@ return new class extends Migration
             $table->unique('path');
             $table->unique('source');
             $table->unique('alias');
+            $table->index(['directory', 'storage']);
         });
     }
 

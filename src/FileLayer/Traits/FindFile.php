@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\FileLayer\Traits;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
+use Vaskiq\LaravelFileLayer\Data\PathInfoData;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 trait FindFile
 {
+    use FileInfo;
     use WithFileRepository;
     use WithFileWrappers;
     use WithStorageOperator;
@@ -34,7 +36,7 @@ trait FindFile
                     'storage' => $storageName,
                 ]);
 
-                return $this->makeFileWrapper($fileData);
+                return $this->makeFileWrapper($fileDataWithStorage);
             }
         }
 
@@ -57,9 +59,20 @@ trait FindFile
                 continue;
             }
             if ($storage->exists($path)) {
+                if ($this->storageOperator()->isLocal($storage)) {
+                    $fullPath = $storage->path($path);
+                    $isDirectory = is_dir($fullPath);
+
+                    $pathInfoData = PathInfoData::from([
+                        'path' => $path,
+                        'isDirectory' => $isDirectory,
+                    ]);
+                }
+
                 $fileData = FileData::from([
                     'path' => $path,
                     'storage' => $storage->name,
+                    'directory' => $pathInfoData?->directory,
                 ]);
 
                 return $this->makeFileWrapper($fileData);

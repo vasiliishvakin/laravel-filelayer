@@ -27,12 +27,12 @@ final class FileLayer
         private readonly FileRepository $fileRepository,
     ) {}
 
-    private function storageOperator(): StorageOperator
+    public function storageOperator(): StorageOperator
     {
         return $this->storageOperator;
     }
 
-    private function fileRepository(): FileRepository
+    public function fileRepository(): FileRepository
     {
         return $this->fileRepository;
     }

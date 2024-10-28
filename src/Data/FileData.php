@@ -14,13 +14,18 @@ class FileData extends Data
 {
     public function __construct(
         public readonly ?int $id,
-        public readonly ?string $storage,
         public readonly string $path,
-        public readonly ?string $mime,
-        public readonly ?int $size,
+
+        public readonly ?string $storage = null,
+
+        public readonly ?string $directory = null,
+        public readonly ?string $filename = null,
+
+        public readonly ?string $mime = null,
+        public readonly ?int $size = null,
 
         #[WithCast(DateTimeInterfaceCast::class)]
-        public readonly ?CarbonImmutable $last_modified,
+        public readonly ?CarbonImmutable $last_modified = null,
 
         public readonly ?string $source = null,
         public readonly ?string $alias = null,
