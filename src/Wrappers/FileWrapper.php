@@ -57,16 +57,26 @@ class FileWrapper implements FileWrapperInterface
         return false;
     }
 
-    public function refresh(): self
+    public function refresh(array|string|null $properties  = null): self
     {
-        $properties = [
-            'size' => $this->manager->size($this),
-            'last_modified' => $this->manager->lastModified($this),
-            'mime' => $this->manager->mime($this),
-            'url' => $this->manager->url($this),
+        //TODO: use Enum
+        $updaters = [
+            'size' => fn() => $this->manager->size($this),
+            'last_modified' => fn() => $this->manager->lastModified($this),
+            'mime' => fn() => $this->manager->mime($this),
+            'url' => fn() => $this->manager->url($this),
         ];
 
-        $data = FileData::from([...$this->data->toArray(), ...$properties]);
+        $properties ??= self::REFRESHED_PROPERTIES;
+
+        $fileProperties = [];
+        foreach ((array)$properties as $property) {
+            if (array_key_exists($property, $updaters)) {
+                $fileProperties[$property] = $updaters[$property]();
+            }
+        }
+
+        $data = FileData::from([...$this->data->toArray(), ...$fileProperties]);
         $this->data = $data;
 
         return $this;

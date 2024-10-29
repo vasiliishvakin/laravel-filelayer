@@ -6,6 +6,7 @@ namespace Vaskiq\LaravelFileLayer\FileLayer\Traits;
 
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Data\PathInfoData;
+use Vaskiq\LaravelFileLayer\Exceptions\FileNotFoundException;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
@@ -23,7 +24,7 @@ trait FindFile
 
         if ($fileData->storage) {
             if (! $this->storageOperator()->storage($fileData->storage)->exists($fileData->path)) {
-                throw new \Exception('File not found');
+                throw new FileNotFoundException(sprintf('File with id %d not found in database', $id));
             }
 
             return $this->makeFileWrapper($fileData);
@@ -40,7 +41,7 @@ trait FindFile
             }
         }
 
-        throw new \Exception('File not found');
+        throw new FileNotFoundException(sprintf('File with id %d not found in storage', $id));
     }
 
     public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper

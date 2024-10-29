@@ -25,23 +25,25 @@ trait FileActions
 
         $storage = $this->storageOperator()->storage($storageName);
 
-        $newPath = $storage->putFileAs(
-            path: $file->directory(),
-            file: $file->laravelFile(),
-            name: $file->name(),
-        );
+        if (!$this->exists($file, $storage->name)) {
+            $newPath = $storage->putFileAs(
+                path: $file->directory(),
+                file: $file->laravelFile(),
+                name: $file->name(),
+            );
 
-        if (! $newPath) {
-            throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
+            if (! $newPath) {
+                throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
+            }
+
+            $source = $file->path() !== $newPath ? $file->path() : null;
         }
-
-        $source = $file->path() !== $newPath ? $file->path() : null;
 
         $fileData = FileData::from([
             ...$fileData->toArray(),
-            'path' => $newPath,
+            'path' => isset($newPath) ? $newPath : $fileData->path,
             'storage' => $storage->name,
-            'source' => $source,
+            'source' => isset($source) ? $source : null,
         ]);
 
         return $this->makeFileWrapper($fileData);
@@ -58,6 +60,7 @@ trait FileActions
 
         if ($file->storage() !== $this->storageOperator()->mainStorageName) {
             $file = $this->relocate($file, $this->storageOperator()->mainStorageName);
+            $file->refresh('url');
             $dirty = true;
         }
 
@@ -195,7 +198,7 @@ trait FileActions
         return $pipeline->send($workingFile)
             ->through($actions)
             ->then(
-                fn ($file) => $this->put($newPath, $file->content())
+                fn($file) => $this->put($newPath, $file->content())
             );
     }
 
