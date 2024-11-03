@@ -4,25 +4,42 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer;
 
+use Illuminate\Support\Str;
+use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Exceptions\TmpFileExistsException;
+use Vaskiq\LaravelFileLayer\Facades\Mime;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
-final class TmpFileLayer
+/**
+ * @extends BaseFileLayer<TmpFileWrapper>
+ */
+final class TmpFileLayer extends BaseFileLayer
 {
     /** @var array<string, TmpFileWrapper> */
     protected array $tmpFiles = [];
 
     public function __construct(
-        private readonly StorageOperator $storageOperator,
+        StorageOperator $storageOperator,
     ) {
+        parent::__construct($storageOperator);
         $this->registerShutdownHandler();
     }
 
-    public function create(?string $content = null, ?string $mime = null, ?FileLayer $manager = null): TmpFileWrapper
+    public function create(?string $content = null, ?string $mime = null): TmpFileWrapper
     {
-        $file = TmpFileWrapper::fromContent(content: $content, mime: $mime);
+        $extension = $mime ? Mime::extension($mime) : null;
+
+        $filePath = $this->createFile($content, $extension);
+
+        $tmpData = FileData::from([
+            'storage' => $this->storage()->name,
+            'path' => $filePath,
+            'mime' => $mime,
+        ]);
+
+        $file = TmpFileWrapper::from($tmpData, $this);
 
         if ($this->existByKey($file->toKey())) {
             throw TmpFileExistsException::fromPath($file->path(), $file->storage());
@@ -34,21 +51,32 @@ final class TmpFileLayer
 
     public function delete(TmpFileWrapper $file): void
     {
-        $storage = $this->storage($file);
-        if ($storage->exists($file->path())) {
-            $storage->delete($file->path());
+        if ($this->exists($file)) {
+            $this->storage()->delete($file->path());
         }
         unset($this->tmpFiles[$file->toKey()]);
     }
 
-    private function storageOperator(): StorageOperator
+    private function storage(): StorageWrapper
     {
-        return $this->storageOperator;
+        return $this->storageOperator()->tmp();
     }
 
-    private function storage(TmpFileWrapper $file): StorageWrapper
+    private function createFile(?string $content = null, ?string $extension = null): string
     {
-        return $this->storageOperator()->storage($file->storage());
+        $content ??= '';
+        $storage = $this->storage();
+        $extension = $extension ? '.'.ltrim($extension, '.') : '';
+
+        do {
+            $fileName = Str::ulid().$extension;
+        } while ($storage->exists($fileName));
+
+        if (! $storage->put($fileName, $content)) {
+            throw new \RuntimeException(sprintf('Failed to create a temporary file in the storage %s.', $storage->name));
+        }
+
+        return $fileName;
     }
 
     private function clear(): void

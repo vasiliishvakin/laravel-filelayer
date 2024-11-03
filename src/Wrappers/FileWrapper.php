@@ -4,52 +4,47 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
-use Illuminate\Support\Facades\App;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\File;
 use Vaskiq\LaravelFileLayer\Contracts\FileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\FileData;
+use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
+use Vaskiq\LaravelFileLayer\Facades\Mime;
 use Vaskiq\LaravelFileLayer\FileLayer;
-use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileActions;
-use Vaskiq\LaravelFileLayer\Wrappers\Traits\FileInfo;
 
-class FileWrapper implements FileWrapperInterface
+/**
+ * @method ?string get()
+ * @method bool exists()
+ * @method bool delete()
+ * @method bool misplaced()
+ * @method FileWrapper sync()
+ * @method static|FileWrapperInterface working()
+ * @method static|FileWrapperInterface process(array $actions)
+ * @method static|FileWrapperInterface processTo(array $actions)
+ * @method File laravelFile()
+ * @method bool isLocal()
+ * @method string fullPath()
+ * @method string content()
+ *
+ * @extends BaseFileWrapper<FileData, FileLayer>
+ */
+class FileWrapper extends BaseFileWrapper
 {
-    use FileActions;
-    use FileInfo;
+    protected string $workingPath;
 
-    protected const REFRESHED_PROPERTIES = [
-        'size',
-        'last_modified',
-        'mime',
-        'url',
-    ];
-
-    public function __construct(
-        protected FileData $data,
-        protected readonly FileLayer $manager,
-    ) {}
-
-    public static function fromData(FileData $data, ?FileLayer $manager = null): self
+    public function repositoryId(): int|string|null
     {
-        $manager ??= App::make(FileLayer::class);
-
-        return new self($data, $manager);
-    }
-
-    public function data(): FileData
-    {
-        return $this->data;
-    }
-
-    public function manager(): FileLayer
-    {
-        return $this->manager;
+        return $this->data()->id ?? null;
     }
 
     public function incomplete(): bool
     {
         $data = $this->data();
-        foreach (self::REFRESHED_PROPERTIES as $property) {
-            if (! property_exists($data, $property) || $data->$property === null) {
+        foreach ($this->refreshedProperties() as $property) {
+            if (
+                ! property_exists($data, $property->value)
+                || $data->$property->value === null
+            ) {
                 return true;
             }
         }
@@ -57,53 +52,114 @@ class FileWrapper implements FileWrapperInterface
         return false;
     }
 
-    public function refresh(array|string|null $properties  = null): self
+    /**
+     * @param  array<FileRefreshedProperties>|FileRefreshedProperties|null  $properties
+     */
+    public function refresh(array|FileRefreshedProperties|null $properties = null): self
     {
-        //TODO: use Enum
         $updaters = [
-            'size' => fn() => $this->manager->size($this),
-            'last_modified' => fn() => $this->manager->lastModified($this),
-            'mime' => fn() => $this->manager->mime($this),
-            'url' => fn() => $this->manager->url($this),
+            FileRefreshedProperties::SIZE->value => fn () => $this->fileLayer()->size($this),
+            FileRefreshedProperties::LAST_MODIFIED->value => fn () => $this->fileLayer()->lastModified($this),
+            FileRefreshedProperties::MIME->value => fn () => $this->fileLayer()->mime($this),
+            FileRefreshedProperties::URL->value => fn () => $this->fileLayer()->url($this),
         ];
 
-        $properties ??= self::REFRESHED_PROPERTIES;
-
         $fileProperties = [];
-        foreach ((array)$properties as $property) {
-            if (array_key_exists($property, $updaters)) {
-                $fileProperties[$property] = $updaters[$property]();
+        /** @var FileRefreshedProperties $property */
+        foreach ((array) $properties as $property) {
+            $filePropertyName = $property->value;
+            if (array_key_exists($filePropertyName, $updaters)) {
+                $fileProperties[$filePropertyName] = $updaters[$filePropertyName]();
             }
         }
 
+        $isRefreshed = false;
+        foreach ($fileProperties as $name => $value) {
+            if (! property_exists($this->data, $name)) {
+                $isRefreshed = true;
+                break;
+            }
+            if ($value !== $this->data->$name) {
+                $isRefreshed = true;
+                break;
+            }
+        }
+
+        if (! $isRefreshed) {
+            return $this;
+        }
         $data = FileData::from([...$this->data->toArray(), ...$fileProperties]);
-        $this->data = $data;
 
-        return $this;
+        return $this->fileLayer()->makeFileWrapper($data);
     }
 
-    public function misplaced(): bool
+    /**
+     * @param  array<mixed>  $arguments
+     */
+    public function __call(string $name, array $arguments): mixed
     {
-        return $this->manager->misplaced($this);
+        if (method_exists($this->fileLayer(), $name)) {
+            return $this->fileLayer()->$name($this, ...$arguments);
+        }
+        if (property_exists($this->data, $name)) {
+            $reflection = new \ReflectionProperty($this->data, $name);
+            if ($reflection->isPublic()) {
+                return $this->data->$name;
+            }
+        }
+        throw new \BadMethodCallException(sprintf('Method %s does not exist in %s', $name, static::class));
     }
 
-    public function sync(): FileWrapper
+    public function directory(): string
     {
-        return $this->manager->sync($this);
+        return dirname($this->path());
     }
 
-    public function working(): static|FileWrapperInterface
+    public function name(): string
     {
-        return $this->manager()->working($this);
+        return basename($this->path());
     }
 
-    public function process(array $actions): static|FileWrapperInterface
+    public function extension(): string
     {
-        return $this->manager()->process($this, $actions);
+        return strtolower(pathinfo($this->path(), PATHINFO_EXTENSION));
     }
 
-    public function processTo(array $actions): static|FileWrapperInterface
+    public function mimeExtension(): string
     {
-        return $this->manager()->processTo($this, $actions);
+        return Mime::extension($this->mime());
+    }
+
+    public function cleanName(): string
+    {
+        return pathinfo($this->path(), PATHINFO_FILENAME);
+    }
+
+    public function size(): int
+    {
+        return $this->data()->size ?? $this->fileLayer()->size($this);
+    }
+
+    public function lastModified(): CarbonImmutable
+    {
+        return $this->data()->lastModified ?? $this->fileLayer()->lastModified($this);
+    }
+
+    public function mime(): string
+    {
+        return $this->data()->mimeType ?? $this->fileLayer()->mime($this);
+    }
+
+    public function url(): string
+    {
+        return $this->data()->url ?? $this->fileLayer()->url($this);
+    }
+
+    /**
+     * @return array<FileRefreshedProperties>
+     */
+    protected function refreshedProperties(): array
+    {
+        return FileRefreshedProperties::cases();
     }
 }

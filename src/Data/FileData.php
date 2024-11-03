@@ -7,16 +7,15 @@ namespace Vaskiq\LaravelFileLayer\Data;
 use Carbon\CarbonImmutable;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\DateTimeInterfaceCast;
-use Spatie\LaravelData\Data;
 use Vaskiq\LaravelDataLayer\Data\Casts\JsonToArrayCast;
 
-class FileData extends Data
+class FileData extends FileSystemItemData
 {
     public function __construct(
-        public readonly ?int $id,
-        public readonly string $path,
+        ?string $path = null,
+        ?string $storage = null,
 
-        public readonly ?string $storage = null,
+        public readonly ?int $id = null,
 
         public readonly ?string $directory = null,
         public readonly ?string $filename = null,
@@ -30,8 +29,11 @@ class FileData extends Data
         public readonly ?string $source = null,
         public readonly ?string $alias = null,
 
+        /**
+         * @var array<mixed> $metadata
+         */
         #[WithCast(JsonToArrayCast::class)]
-        public readonly ?array $metadata = [],
+        public readonly array $metadata = [],
 
         public readonly ?string $url = null,
 
@@ -40,7 +42,9 @@ class FileData extends Data
 
         #[WithCast(DateTimeInterfaceCast::class)]
         public readonly ?CarbonImmutable $updated_at = null
-    ) {}
+    ) {
+        parent::__construct(path: $path, storage: $storage);
+    }
 
     public function toArray(): array
     {

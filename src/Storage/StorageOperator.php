@@ -17,8 +17,10 @@ class StorageOperator
 
     public readonly string $mainStorageName;
 
+    /** @var array<string, mixed> */
     protected readonly array $storagesConfig;
 
+    /** @var array<string> */
     protected readonly array $storagesNames;
 
     private array $initStorages = [];

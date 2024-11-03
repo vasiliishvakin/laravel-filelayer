@@ -5,24 +5,27 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Repositories;
 
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
 use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Models\File;
-use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 /**
- * @method FileData toData(mixed $model)
+ * @extends EloquentRepository<FileData, File>
  */
-class FileRepository extends EloquentRepository
+final class FileRepository extends EloquentRepository
 {
-    protected string $dataClass = FileData::class;
+    private const DATA_CLASS = FileData::class;
 
     public function __construct(File $model, DataFactoryInterface $dataFactory)
     {
         parent::__construct($model, $dataFactory);
+    }
+
+    public function dataClass(): string
+    {
+        return self::DATA_CLASS;
     }
 
     public function findByPath(string $path, ?string $storage = null): ?FileData
@@ -69,7 +72,7 @@ class FileRepository extends EloquentRepository
     }
 
     /**
-     * @return Collection<int, FileWrapper>
+     * @return Collection<int, FileData>
      */
     public function filesInDirectory(?string $directory = null, ?string $storage = null): Collection
     {
@@ -81,7 +84,7 @@ class FileRepository extends EloquentRepository
     /**
      * @return Builder<File>
      */
-    private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder|QueryBuilder
+    private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
     {
         return $this->query()
             ->when($directory, fn ($q) => $q->where('directory', $directory))

@@ -19,6 +19,9 @@ class StorageWrapper
         public readonly Filesystem $storage,
     ) {}
 
+    /**
+     * @param  array<mixed>  $parameters
+     */
     public function __call(string $method, array $parameters): mixed
     {
         return $this->storage->{$method}(...$parameters);
