@@ -110,15 +110,42 @@ final class FileLayer extends BaseFileLayer
         throw new FileNotFoundException(sprintf('File with id %d not found in storage', $id));
     }
 
+    public function pathInfo(string $path, StorageWrapper|string|null $storage = null): PathInfoData
+    {
+        $storage = $storage instanceof StorageWrapper
+            ? $storage
+            : $this->storageByName($storage);
+
+        $isDirectory = null;
+
+        if ($storage->exists($path) && $this->storageOperator()->isLocal($storage)) {
+            $fullPath = $storage->path($path);
+            $isDirectory = is_dir($fullPath);
+        }
+
+        return PathInfoData::from([
+            'path' => $path,
+            'isDirectory' => $isDirectory,
+        ]);
+    }
+
     public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper
     {
         $fileData = $this->fileRepository()->findByPath($path, $storageName);
+
         if ($fileData?->storage) {
             if (! is_null($storageName) && $fileData->storage !== $storageName) {
                 return null;
             }
 
-            return $this->makeFileWrapper($fileData);
+            $file = $this->makeFileWrapper($fileData);
+            if ($file->incomplete()) {
+                $file = $file->refresh();
+                if (!$file->incomplete()) {
+                    return $this->register($file);
+                }
+            }
+            return $file;
         }
 
         foreach ($this->storageOperator()->storages() as $storage) {
@@ -126,15 +153,7 @@ final class FileLayer extends BaseFileLayer
                 continue;
             }
             if ($storage->exists($path)) {
-                if ($this->storageOperator()->isLocal($storage)) {
-                    $fullPath = $storage->path($path);
-                    $isDirectory = is_dir($fullPath);
-
-                    $pathInfoData = PathInfoData::from([
-                        'path' => $path,
-                        'isDirectory' => $isDirectory,
-                    ]);
-                }
+                $pathInfoData = $this->pathInfo($path, $storage);
 
                 $fileData = FileData::from([
                     'path' => $path,
@@ -188,7 +207,7 @@ final class FileLayer extends BaseFileLayer
         );
     }
 
-    public function get(FileWrapper $file): string
+    public function get(BaseFileWrapper $file): string
     {
         return $this->storageByFile($file)->get($this->path($file));
     }
@@ -244,9 +263,12 @@ final class FileLayer extends BaseFileLayer
             throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
         }
 
+        $pathInfoData = $this->pathInfo($path, $storage);
+
         $file = $this->makeFileWrapper(FileData::from([
             'path' => $path,
             'storage' => $storage->name,
+            'path_info' => $pathInfoData,
         ]));
 
         return $this->register($file);
@@ -271,10 +293,13 @@ final class FileLayer extends BaseFileLayer
 
         $newPath = $storageOperator->putFileAs($newDir, $file->laravelFile(), $newFileName);
 
+        $pathInfoData = $this->pathInfo($newPath, $newStorage);
+
         $fileWrapper = $this->makeFileWrapper(FileData::from([
             'path' => $newPath,
             'storage' => $storageOperator->name,
             'source' => $newPath !== $file->path() ? $file->path() : null,
+            'path_info' => $pathInfoData,
         ]));
 
         return $this->register($fileWrapper);
@@ -317,21 +342,29 @@ final class FileLayer extends BaseFileLayer
     }
 
     /**
-     * @param  array<mixed>  $actions
+     * @param  array<mixed>|string  $actions
      */
     public function processTo(
         FileWrapper $file,
-        array $actions,
+        array|string $actions,
         string|Stringable|callable|null $newPath = null
     ): FileWrapper {
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
 
         if ($existingFile = $this->fileByPath($newPath, $file->storage())) {
+            if ($existingFile->incomplete()) {
+                $existingFile = $existingFile->refresh();
+                $existingFile = $this->register($existingFile);
+            }
             return $existingFile;
         }
 
         if (empty($actions)) {
             return $this->copy($file, $newPath);
+        }
+
+        if (!is_array($actions)) {
+            $actions = [$actions];
         }
 
         $workingFile = $this->workingCopy($file);
@@ -340,7 +373,7 @@ final class FileLayer extends BaseFileLayer
         return $pipeline->send($workingFile)
             ->through($actions)
             ->then(
-                fn ($file) => $this->put($newPath, $this->get($workingFile))
+                fn($file) => $this->put($newPath, $this->get($workingFile))
             );
     }
 
@@ -466,7 +499,7 @@ final class FileLayer extends BaseFileLayer
     private function register(FileWrapper $file, bool $forceRefresh = false): FileWrapper
     {
         if ($forceRefresh || $file->incomplete()) {
-            $file->refresh();
+            $file = $file->refresh();
         }
 
         /** @var FileData */
@@ -478,9 +511,12 @@ final class FileLayer extends BaseFileLayer
     /**
      * @param  array<mixed>  $actions
      */
-    private function generatePathForActions(FileWrapper $file, array $actions, string|Stringable|callable|null $newPath = null): string
+    private function generatePathForActions(FileWrapper $file, array|string $actions, string|Stringable|callable|null $newPath = null): string
     {
         $newPath = $newPath ?? FileNameGeneratorByActions::class;
+        if (!is_array($actions)) {
+            $actions = [$actions];
+        }
 
         return (string) match (true) {
             $newPath instanceof \Stringable => (string) $newPath,
