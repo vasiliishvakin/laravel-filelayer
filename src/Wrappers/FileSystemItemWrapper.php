@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
 use Illuminate\Support\Facades\App;
-use Vaskiq\FileLayer\Contracts\FileLayerInterface;
+use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Contracts\FileSystemItemWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\FileSystemItemData;
 use Vaskiq\LaravelFileLayer\FileLayer;

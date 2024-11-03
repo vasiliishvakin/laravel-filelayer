@@ -24,7 +24,6 @@ use Vaskiq\LaravelFileLayer\FileLayer;
  * @method File laravelFile()
  * @method bool isLocal()
  * @method string fullPath()
- * @method string content()
  *
  * @extends BaseFileWrapper<FileData, FileLayer>
  */
@@ -34,16 +33,17 @@ class FileWrapper extends BaseFileWrapper
 
     public function repositoryId(): int|string|null
     {
-        return $this->data()->id ?? null;
+        return $this->data()?->id ?? null;
     }
 
     public function incomplete(): bool
     {
         $data = $this->data();
         foreach ($this->refreshedProperties() as $property) {
+            $filePropertyName = $property->value;
             if (
-                ! property_exists($data, $property->value)
-                || $data->$property->value === null
+                ! property_exists($data, $filePropertyName)
+                || $data->{$filePropertyName} === null
             ) {
                 return true;
             }
@@ -64,9 +64,14 @@ class FileWrapper extends BaseFileWrapper
             FileRefreshedProperties::URL->value => fn () => $this->fileLayer()->url($this),
         ];
 
+        $properties = $properties ?? $this->refreshedProperties();
+        if (! is_array($properties)) {
+            $properties = [$properties];
+        }
+
         $fileProperties = [];
         /** @var FileRefreshedProperties $property */
-        foreach ((array) $properties as $property) {
+        foreach ($properties as $property) {
             $filePropertyName = $property->value;
             if (array_key_exists($filePropertyName, $updaters)) {
                 $fileProperties[$filePropertyName] = $updaters[$filePropertyName]();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Intervention\Image\ImageManager;
 use Vaskiq\LaravelFileLayer\FileLayer;
 use Vaskiq\LaravelFileLayer\Helpers\MimeHelper;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
@@ -29,6 +30,15 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(ConfigPreprocessor::class);
 
         $this->app->singleton(UploadFilesService::class);
+
+        $this->app->singleton(ImageManager::class, function () {
+            $config = config('filelayer.image_manager');
+
+            return new ImageManager(
+                driver: $config['driver'],
+                options: $config['options'],
+            );
+        });
     }
 
     public function boot(): void
@@ -38,6 +48,7 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
 
         $this->publishes([
             __DIR__.'/../config/filelayer.php' => config_path('filelayer.php'),
+            'config',
         ]);
 
         ($this->app->make(ConfigPreprocessor::class))();

@@ -11,14 +11,18 @@ use Vaskiq\LaravelDataLayer\Data\Casts\JsonToArrayCast;
 
 class FileData extends FileSystemItemData
 {
+    public readonly ?string $directory;
+
+    public readonly ?string $filename;
+
     public function __construct(
         ?string $path = null,
         ?string $storage = null,
 
         public readonly ?int $id = null,
 
-        public readonly ?string $directory = null,
-        public readonly ?string $filename = null,
+        ?string $directory = null,
+        ?string $filename = null,
 
         public readonly ?string $mime = null,
         public readonly ?int $size = null,
@@ -29,11 +33,8 @@ class FileData extends FileSystemItemData
         public readonly ?string $source = null,
         public readonly ?string $alias = null,
 
-        /**
-         * @var array<mixed> $metadata
-         */
         #[WithCast(JsonToArrayCast::class)]
-        public readonly array $metadata = [],
+        public readonly ?array $metadata = [],
 
         public readonly ?string $url = null,
 
@@ -41,9 +42,14 @@ class FileData extends FileSystemItemData
         public readonly ?CarbonImmutable $created_at = null,
 
         #[WithCast(DateTimeInterfaceCast::class)]
-        public readonly ?CarbonImmutable $updated_at = null
+        public readonly ?CarbonImmutable $updated_at = null,
+
+        ?PathInfoData $path_info = null,
     ) {
         parent::__construct(path: $path, storage: $storage);
+
+        $this->directory = $directory ?? $path_info?->directory;
+        $this->filename = $filename ?? $path_info?->filename;
     }
 
     public function toArray(): array

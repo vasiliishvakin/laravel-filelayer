@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
-use Vaskiq\FileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Contracts\BaseFileWrapperInterface;
+use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Data\FileSystemItemData;
 
 /**

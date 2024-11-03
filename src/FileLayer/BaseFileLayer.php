@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Vaskiq\LaravelFileLayer;
+namespace Vaskiq\LaravelFileLayer\FileLayer;
 
-use Vaskiq\FileLayer\Contracts\FileLayerInterface;
+use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Contracts\FileSystemItemWrapperInterface;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;

@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Exceptions\TmpFileExistsException;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
+use Vaskiq\LaravelFileLayer\FileLayer\BaseFileLayer;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;

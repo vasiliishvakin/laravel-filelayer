@@ -6,4 +6,16 @@ return [
             'ttl' => 60,
         ],
     ],
+
+    'image_manager' => [
+        'driver' => match (strtolower((string) env('FILELAYER_IMAGE_DRIVER', 'gd'))) {
+            'imagick' => \Intervention\Image\Drivers\Imagick\Driver::class,
+            default => \Intervention\Image\Drivers\Gd\Driver::class,
+        },
+        'options' => [
+            'autoOrientation' => env('FILELAYER_IMAGE_AUTO_ORIENTATION', true),
+            'decodeAnimation' => env('FILELAYER_IMAGE_DECODE_ANIMATION', true),
+            'blendingColor' => env('FILELAYER_IMAGE_BLENDING_COLOR', 'ffffff'),
+        ],
+    ],
 ];

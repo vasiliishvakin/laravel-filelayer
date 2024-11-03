@@ -1,8 +1,7 @@
 <?php
 
-namespace Vaskiq\FileLayer\Contracts;
+namespace Vaskiq\LaravelFileLayer\Contracts;
 
-use Vaskiq\LaravelFileLayer\Contracts\FileSystemItemWrapperInterface;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 
 interface FileLayerInterface

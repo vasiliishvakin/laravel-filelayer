@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Contracts;
 
 use Stringable;
-use Vaskiq\FileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Data\FileSystemItemData;
 
 interface FileSystemItemWrapperInterface extends Stringable

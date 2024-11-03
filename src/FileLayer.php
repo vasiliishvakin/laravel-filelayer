@@ -14,8 +14,10 @@ use Vaskiq\LaravelFileLayer\Contracts\BaseFileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\DirectoryData;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Data\PathInfoData;
+use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
 use Vaskiq\LaravelFileLayer\Exceptions\FileNotFoundException;
 use Vaskiq\LaravelFileLayer\Facades\TmpFile;
+use Vaskiq\LaravelFileLayer\FileLayer\BaseFileLayer;
 use Vaskiq\LaravelFileLayer\Generators\FileName\FileNameGeneratorByActions;
 use Vaskiq\LaravelFileLayer\Repositories\FileRepository;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
@@ -26,11 +28,6 @@ use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
 /**
- * @method int size(BaseFileWrapper $file)
- * @method string|false mime(BaseFileWrapper $file)
- * @method string url(BaseFileWrapper $file)
- * @method ?string get(BaseFileWrapper $file)
- *
  * @extends BaseFileLayer<FileWrapper>
  */
 final class FileLayer extends BaseFileLayer
@@ -142,7 +139,7 @@ final class FileLayer extends BaseFileLayer
                 $fileData = FileData::from([
                     'path' => $path,
                     'storage' => $storage->name,
-                    'directory' => isset($pathInfoData) ? $pathInfoData->directory : null, //$pathInfoData?->directory,
+                    'path_info' => $pathInfoData ?? null,
                 ]);
 
                 return $this->makeFileWrapper($fileData);
@@ -169,11 +166,31 @@ final class FileLayer extends BaseFileLayer
         throw new \BadMethodCallException(sprintf('Method %s not found in %s', $name, self::class));
     }
 
+    public function size(FileWrapper $file): int
+    {
+        return $this->storageByFile($file)->size($this->path($file));
+    }
+
+    public function mime(FileWrapper $file): string|false
+    {
+        return $this->storageByFile($file)->mimeType($this->path($file));
+    }
+
+    public function url(FileWrapper $file): string
+    {
+        return $this->storageByFile($file)->url($this->path($file));
+    }
+
     public function lastModified(FileWrapper $file): CarbonImmutable
     {
         return CarbonImmutable::createFromTimestamp(
             $this->storageByFile($file)->lastModified($this->path($file))
         );
+    }
+
+    public function get(FileWrapper $file): string
+    {
+        return $this->storageByFile($file)->get($this->path($file));
     }
 
     public function laravelFile(FileWrapper $file): File
@@ -186,9 +203,13 @@ final class FileLayer extends BaseFileLayer
         return new File($storage->path($this->path($file)));
     }
 
-    public function existsPath(string $path, ?string $storage = null): bool
+    public function existsPath(string $path, string|StorageWrapper|null $storage = null): bool
     {
-        return $this->storageByName($storage)->exists($path);
+        $storage = $storage instanceof StorageWrapper
+            ? $storage
+            : $this->storageByName($storage);
+
+        return $storage->exists($path);
     }
 
     public function misplaced(FileWrapper $file): bool
@@ -369,6 +390,72 @@ final class FileLayer extends BaseFileLayer
 
             return $this->makeDirectoryWrapper($directoryData);
         });
+    }
+
+    public function relocate(FileWrapper $file, ?string $storageName = null, array $options = []): FileWrapper
+    {
+        $fileData = $file->data();
+
+        $storage = $this->storageOperator()->storage($storageName);
+
+        if (! $this->existsPath($this->path($file), $storage)) {
+            $newPath = $storage->putFileAs(
+                path: $file->directory(),
+                file: $this->laravelFile($file),
+                name: $file->name(),
+            );
+
+            if (! $newPath) {
+                throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
+            }
+
+            $source = $file->path() !== $newPath ? $file->path() : null;
+        }
+
+        $fileData = FileData::from([
+            ...$fileData->toArray(),
+            'path' => isset($newPath) ? $newPath : $fileData->path,
+            'storage' => $storage->name,
+            'source' => isset($source) ? $source : null,
+        ]);
+
+        return $this->makeFileWrapper($fileData);
+    }
+
+    public function sync(FileWrapper $file, bool $forceRefresh = false): FileWrapper
+    {
+        $dirty = false;
+
+        if ($forceRefresh || $file->incomplete()) {
+            $file = $file->refresh();
+            $dirty = true;
+        }
+
+        if ($this->misplaced($file)) {
+            $file = $this->relocate($file);
+            $file = $file->refresh(FileRefreshedProperties::URL);
+            $dirty = true;
+        }
+
+        if (! $file->repositoryId() || $dirty) {
+            return $this->register($file);
+        }
+
+        return $file;
+    }
+
+    public function directory(string $path, string|StorageWrapper|null $storage = null): DirectoryWrapper
+    {
+        $storage = $storage instanceof StorageWrapper
+            ? $storage
+            : $this->storageByName($storage);
+
+        $directoryData = DirectoryData::from([
+            'path' => $path,
+            'storage' => $storage->name,
+        ]);
+
+        return $this->makeDirectoryWrapper($directoryData);
     }
 
     private function getPipeline(): Pipeline
