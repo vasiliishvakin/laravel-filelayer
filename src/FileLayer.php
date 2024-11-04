@@ -408,14 +408,19 @@ final class FileLayer extends BaseFileLayer
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
 
         if ($existingFile = $this->fileByPath($newPath)) {
+            $dirty = false;
             if ($existingFile->misplaced()) {
                 $existingFile = $this->relocate($existingFile);
+                $dirty = true;
             }
             if ($existingFile->incomplete()) {
+                $existingFile = $existingFile->refresh();
+                $dirty = true;
+            }
+            if ($dirty) {
                 $existingFile = $this->register($existingFile);
             }
-
-            return $existingFile;
+            Processed::dispatch(['file' => $file, 'newFile' => $existingFile, 'actions' => $actions]);
         }
 
         if (empty($actions)) {
@@ -435,7 +440,7 @@ final class FileLayer extends BaseFileLayer
                 ->then(
                     fn ($file) => $this->put($newPath, $this->get($workingFile))
                 ),
-            fn ($file) => event(new Processed($file))
+            fn ($newFile) => event(new Processed(['file' => $file, 'newFile' => $newFile, 'actions' => $actions]))
         );
     }
 
@@ -512,7 +517,7 @@ final class FileLayer extends BaseFileLayer
                     $e->getMessage()
                 ), filelayer_log_context());
 
-                return $file;
+                return $file; //return original file if failed to put file to new storage
             }
             $source = $file->path() !== $newPath ? $file->path() : null;
         }
@@ -524,10 +529,13 @@ final class FileLayer extends BaseFileLayer
             'source' => isset($source) ? $source : null,
         ]);
 
-        return tap(
-            $this->makeFileWrapper($fileData),
-            fn ($file) => event(new Relocated($file))
-        );
+        $file = $this->makeFileWrapper($fileData);
+
+        $file = $file->incomplete() ? $file->refresh() : $file->refresh(FileRefreshedProperties::URL);
+
+        Relocated::dispatch($file);
+
+        return $file;
     }
 
     public function sync(FileWrapper $file, bool $forceRefresh = false): FileWrapper
@@ -541,7 +549,6 @@ final class FileLayer extends BaseFileLayer
 
         if ($this->misplaced($file)) {
             $file = $this->relocate($file);
-            $file = $file->refresh(FileRefreshedProperties::URL);
             $dirty = true;
         }
 
@@ -552,10 +559,9 @@ final class FileLayer extends BaseFileLayer
             );
         }
 
-        return tap(
-            $file,
-            fn ($file) => event(new Synced($file))
-        );
+        Synced::dispatch($file);
+
+        return $file;
     }
 
     public function directory(string $path, string|StorageWrapper|null $storage = null): DirectoryWrapper
