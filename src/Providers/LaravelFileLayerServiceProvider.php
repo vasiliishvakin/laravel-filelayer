@@ -24,7 +24,6 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
         $this->app->singleton(StorageOperator::class);
         $this->app->singleton(FileRepository::class);
 
-
         $this->app->singleton(FileLayer::class);
         $this->app->singleton(TmpFileLayer::class);
 
@@ -32,14 +31,13 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
 
         $this->app->singleton(UploadFilesService::class);
 
-
         $this->app->singleton(ImageManager::class, function () {
             $options = config('filelayer.image_manager.options', [
                 'autoOrientation' => true,
                 'decodeAnimation' => true,
                 'blendingColor' => 'ffffff',
             ]);
-            $driver = config('filelayer.image_manager.driver',  \Intervention\Image\Drivers\Gd\Driver::class);
+            $driver = config('filelayer.image_manager.driver', \Intervention\Image\Drivers\Gd\Driver::class);
 
             return new ImageManager($driver, ...$options);
         });
@@ -48,10 +46,10 @@ class LaravelFileLayerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Bootstrapping logic, such as publishing config files or migrations.
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         $this->publishes([
-            __DIR__ . '/../config/filelayer.php' => config_path('filelayer.php'),
+            __DIR__.'/../config/filelayer.php' => config_path('filelayer.php'),
             'config',
         ]);
 

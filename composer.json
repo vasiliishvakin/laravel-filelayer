@@ -5,7 +5,10 @@
     "autoload": {
         "psr-4": {
             "Vaskiq\\LaravelFileLayer\\": "src/"
-        }
+        },
+        "files": [
+            "src/Helpers/helpers.php"
+        ]
     },
     "require": {
         "php": "^8.3",

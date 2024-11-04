@@ -24,9 +24,9 @@ class FileNameGeneratorByActions
         $actionClassesString = empty($actions)
             ? self::NO_ACTIONS_NAME
             : implode(
-                '-',
+                '_',
                 array_map(
-                    fn ($action) => Str::of($action)->classBasename()->snake('-')->lower(),
+                    fn ($action) => Str::of($action)->classBasename()->lower()->replace(['-', '_'], ''),
                     $actions
                 )
             );
