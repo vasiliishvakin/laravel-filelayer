@@ -30,7 +30,7 @@ class StorageOperator
         protected readonly FilesystemFactory $filesystemFactory,
     ) {
         $storages = $this->config->get(self::CONFIG_DISKS_KEY, []);
-        uasort($storages, fn ($a, $b) => ($a['priority'] ?? PHP_INT_MAX) <=> ($b['priority'] ?? PHP_INT_MAX));
+        uasort($storages, fn($a, $b) => ($a['priority'] ?? PHP_INT_MAX) <=> ($b['priority'] ?? PHP_INT_MAX));
 
         $defaultStorage = $this->config->get('filesystems.default');
         if ($storages[$defaultStorage]['read_only'] ?? false) {
@@ -108,16 +108,16 @@ class StorageOperator
             return $this->initStorages[self::TMP_STORAGE_NAME];
         }
 
-        $configTmpKey = self::CONFIG_DISKS_KEY.'.'.self::TMP_STORAGE_NAME;
+        $configTmpKey = self::CONFIG_DISKS_KEY . '.' . self::TMP_STORAGE_NAME;
 
         if (! $this->config->has($configTmpKey)) {
-            $tmpDirName = 'laravel_filelayer_'.config('app.name', 'default');
+            $tmpDirName = 'laravel_filelayer_' . config('app.name', 'default');
 
             $tmpDir = sys_get_temp_dir();
-            $tmpPath = $tmpDir.DIRECTORY_SEPARATOR.$tmpDirName;
+            $tmpPath = $tmpDir . DIRECTORY_SEPARATOR . $tmpDirName;
 
             if (! is_dir($tmpPath)) {
-                if (! mkdir($tmpPath, 0600, true)) {
+                if (! mkdir($tmpPath, 0700, true)) {
                     throw new \RuntimeException(sprintf('Directory "%s" was not created', $tmpPath));
                 }
             }
