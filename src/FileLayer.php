@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer;
 
-use ApVaskiqp\Events\Vaskiq\LaravelFileLayer\Events\Relocated;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\File;
 use Illuminate\Pipeline\Pipeline;
@@ -24,6 +23,7 @@ use Vaskiq\LaravelFileLayer\Events\Finding;
 use Vaskiq\LaravelFileLayer\Events\Founded;
 use Vaskiq\LaravelFileLayer\Events\Processed;
 use Vaskiq\LaravelFileLayer\Events\Refreshed;
+use Vaskiq\LaravelFileLayer\Events\Relocated;
 use Vaskiq\LaravelFileLayer\Events\Retrieved;
 use Vaskiq\LaravelFileLayer\Events\Stored;
 use Vaskiq\LaravelFileLayer\Events\Synced;
