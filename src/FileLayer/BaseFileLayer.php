@@ -68,6 +68,8 @@ class BaseFileLayer implements FileLayerInterface
 
     public function pathInfo(string $path, StorageWrapper|string|null $storage = null): PathInfoData
     {
+        $path = $this->normalizePath($path);
+
         $isDirectory = null;
 
         $storage = $this->selectStorage($storage);
@@ -135,8 +137,17 @@ class BaseFileLayer implements FileLayerInterface
         return $this->storageByFile($file)->delete($this->path($file));
     }
 
+    protected function normalizePath(string $path): string
+    {
+        $path = ltrim($path, '/');
+
+        return preg_replace('/\/+/', '/', $path);
+    }
+
     protected function putToStorage(string $path, string $content, string|StorageWrapper|null $storage = null): bool
     {
+        $path = $this->normalizePath($path);
+
         return $this->selectStorage($storage)->put($path, $content);
     }
 }

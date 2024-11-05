@@ -65,6 +65,8 @@ final class FileLayer extends BaseFileLayer
 
     public function registeredByPath(string $path): bool
     {
+        $path = $this->normalizePath($path);
+
         return $this->fileRepository()->existsByPath($path);
     }
 
@@ -126,6 +128,8 @@ final class FileLayer extends BaseFileLayer
 
     public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper
     {
+        $path = $this->normalizePath($path);
+
         Finding::dispatch(['path' => $path, 'storage' => $storageName]);
 
         $fileData = $this->fileRepository()->findByPath($path, $storageName);
@@ -227,7 +231,7 @@ final class FileLayer extends BaseFileLayer
             throw new \InvalidArgumentException('New path or new storage must be provided');
         }
 
-        $newPath = $newPath ?? $file->path();
+        $newPath = $newPath ? $this->normalizePath($newPath) : $file->path();
         $newStorage = $newStorage ?? $file->storage();
 
         $storageOperator = $this->storageOperator()->storage($newStorage);
@@ -270,6 +274,8 @@ final class FileLayer extends BaseFileLayer
 
     public function put(string $path, string $content, ?string $storageName = null): FileWrapper
     {
+        $path = $this->normalizePath($path);
+
         $file = $this->fileByPath($path);
         if ($file) {
             $this->delete($file);
@@ -325,7 +331,9 @@ final class FileLayer extends BaseFileLayer
         array|string $actions,
         string|Stringable|callable|null $newPath = null
     ): FileWrapper {
+
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
+        $newPath = $this->normalizePath($newPath);
 
         if ($existingFile = $this->fileByPath($newPath)) {
             Processed::dispatch(['file' => $file, 'newFile' => $existingFile, 'actions' => $actions]);
@@ -481,6 +489,8 @@ final class FileLayer extends BaseFileLayer
 
     public function directory(string $path, string|StorageWrapper|null $storage = null): DirectoryWrapper
     {
+        $path = $this->normalizePath($path);
+
         $storage = $storage instanceof StorageWrapper
             ? $storage
             : $this->storageByName($storage);
