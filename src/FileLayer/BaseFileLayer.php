@@ -137,7 +137,7 @@ class BaseFileLayer implements FileLayerInterface
         return $this->storageByFile($file)->delete($this->path($file));
     }
 
-    protected function normalizePath(string $path): string
+    public function normalizePath(string $path): string
     {
         $path = ltrim($path, '/');
 
