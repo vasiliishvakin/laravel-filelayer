@@ -10,6 +10,7 @@ use Vaskiq\LaravelFileLayer\Exceptions\TmpFileExistsException;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
 use Vaskiq\LaravelFileLayer\FileLayer\BaseFileLayer;
 use Vaskiq\LaravelFileLayer\Storage\StorageOperator;
+use Vaskiq\LaravelFileLayer\Wrappers\BaseFileWrapper;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 use Vaskiq\LaravelFileLayer\Wrappers\TmpFileWrapper;
 
@@ -50,12 +51,12 @@ final class TmpFileLayer extends BaseFileLayer
         return $file;
     }
 
-    public function delete(TmpFileWrapper $file): void
+    public function delete(BaseFileWrapper $file): bool
     {
-        if ($this->exists($file)) {
-            $this->storage()->delete($file->path());
-        }
+        $this->storage()->delete($file->path());
         unset($this->tmpFiles[$file->toKey()]);
+
+        return true;
     }
 
     private function storage(): StorageWrapper

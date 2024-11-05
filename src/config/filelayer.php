@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'relocation' => [
+        'enabled' => (bool) env('FILELAYER_RELOCATION_ENABLED', false),
+    ],
+
     'preprocessor-config' => [
         'cache' => [
             'ttl' => 60,

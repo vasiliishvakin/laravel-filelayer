@@ -32,6 +32,7 @@ class FileNameGeneratorByActions
             );
 
         $hashPath = Str::of($file->path())
+            ->trim('/')
             ->lower()
             ->pipe(fn ($path) => Str::of(hash(self::HASH_ALGORITHM, (string) $path))->lower());
 

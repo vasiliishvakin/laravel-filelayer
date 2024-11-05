@@ -4,27 +4,13 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Wrappers;
 
-use Carbon\CarbonImmutable;
 use Illuminate\Http\File;
-use Vaskiq\LaravelFileLayer\Contracts\FileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
-use Vaskiq\LaravelFileLayer\Facades\Mime;
+use Vaskiq\LaravelFileLayer\Events\Refreshed;
 use Vaskiq\LaravelFileLayer\FileLayer;
 
 /**
- * @method ?string get()
- * @method bool exists()
- * @method bool delete()
- * @method bool misplaced()
- * @method FileWrapper sync()
- * @method static|FileWrapperInterface working()
- * @method static|FileWrapperInterface process(array $actions)
- * @method static|FileWrapperInterface processTo(array $actions)
- * @method File laravelFile()
- * @method bool isLocal()
- * @method string fullPath()
- *
  * @extends BaseFileWrapper<FileData, FileLayer>
  */
 class FileWrapper extends BaseFileWrapper
@@ -95,7 +81,10 @@ class FileWrapper extends BaseFileWrapper
         }
         $data = FileData::from([...$this->data->toArray(), ...$fileProperties]);
 
-        return $this->fileLayer()->makeFileWrapper($data);
+        return tap(
+            $this->fileLayer()->makeFileWrapper($data),
+            fn ($file) => Refreshed::dispatch($file)
+        );
     }
 
     /**
@@ -115,49 +104,44 @@ class FileWrapper extends BaseFileWrapper
         throw new \BadMethodCallException(sprintf('Method %s does not exist in %s', $name, static::class));
     }
 
-    public function directory(): string
+    public function misplaced(): bool
     {
-        return dirname($this->path());
+        return $this->fileLayer()->misplaced($this);
     }
 
-    public function name(): string
+    public function sync(): FileWrapper
     {
-        return basename($this->path());
+        return $this->fileLayer()->sync($this);
     }
 
-    public function extension(): string
+    public function working(): static
     {
-        return strtolower(pathinfo($this->path(), PATHINFO_EXTENSION));
+        return $this->fileLayer()->working($this);
     }
 
-    public function mimeExtension(): string
+    public function process(array $actions): static
     {
-        return Mime::extension($this->mime());
+        return $this->fileLayer()->process($this, $actions);
     }
 
-    public function cleanName(): string
+    public function processTo(array $actions): static
     {
-        return pathinfo($this->path(), PATHINFO_FILENAME);
+        return $this->fileLayer()->processTo($this, $actions);
     }
 
-    public function size(): int
+    public function laravelFile(): File
     {
-        return $this->data()->size ?? $this->fileLayer()->size($this);
+        return $this->fileLayer()->laravelFile($this);
     }
 
-    public function lastModified(): CarbonImmutable
+    public function isLocal(): bool
     {
-        return $this->data()->lastModified ?? $this->fileLayer()->lastModified($this);
+        return $this->fileLayer()->isLocal($this);
     }
 
-    public function mime(): string
+    public function fullPath(): string
     {
-        return $this->data()->mimeType ?? $this->fileLayer()->mime($this);
-    }
-
-    public function url(): string
-    {
-        return $this->data()->url ?? $this->fileLayer()->url($this);
+        return $this->fileLayer()->fullPath($this);
     }
 
     /**

@@ -98,11 +98,7 @@ final class FileRepository extends EloquentRepository
     private function queryByPath(string $path, ?string $storage = null): Builder
     {
         return $this->query()
-            ->where(
-                fn ($q) => $q->where('path', $path)
-                    ->orWhere('source', $path)
-                    ->orWhere('alias', $path)
-            )
+            ->where('path', $path)
             ->when($storage, fn ($q) => $q->where('storage', $storage));
     }
 }
