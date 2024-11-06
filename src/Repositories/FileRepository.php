@@ -10,6 +10,7 @@ use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
 use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Models\File;
+use \Illuminate\Database\Query\Builder as RawBuilder;
 
 /**
  * @extends EloquentRepository<FileData, File>
@@ -47,9 +48,9 @@ final class FileRepository extends EloquentRepository
     {
         return $this->queryByDirectory($directory, $storage)
             // @phpstan-ignore argument.type
-            ->when($limit, fn ($q) => $q->limit($limit))
+            ->when($limit, fn($q) => $q->limit($limit))
             // @phpstan-ignore argument.type
-            ->when($offset, fn ($q) => $q->offset($offset))
+            ->when($offset, fn($q) => $q->offset($offset))
             ->pluck('path');
     }
 
@@ -87,18 +88,32 @@ final class FileRepository extends EloquentRepository
     private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
     {
         return $this->query()
-            ->when($directory, fn ($q) => $q->where('directory', $directory))
-            ->when(! $directory, fn ($q) => $q->whereNull('directory'))
-            ->when($storage, fn ($q) => $q->where('storage', $storage));
+            ->when($directory, fn($q) => $q->where('directory', $directory))
+            ->when(! $directory, fn($q) => $q->whereNull('directory'))
+            ->when($storage, fn($q) => $q->where('storage', $storage));
     }
 
     /**
      * @return Builder<File>
      */
-    private function queryByPath(string $path, ?string $storage = null): Builder
+    public function queryByPath(string $path, ?string $storage = null): Builder
     {
         return $this->query()
             ->where('path', $path)
-            ->when($storage, fn ($q) => $q->where('storage', $storage));
+            ->when($storage, fn($q) => $q->where('storage', $storage));
+    }
+
+    public function queryRawByPath(string $path, ?string $storage = null): RawBuilder
+    {
+        return $this->raw()
+            ->where('path', $path)
+            ->when($storage, fn($q) => $q->where('storage', $storage));
+    }
+
+    public function url(string $path, ?string $storage = null): ?string
+    {
+        $result = $this->queryRawByPath($path, $storage)->first('url');
+
+        return $result?->url;
     }
 }
