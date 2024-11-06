@@ -85,9 +85,17 @@ final class FileRepository extends EloquentRepository
     /**
      * @return Builder<File>
      */
-    private function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
+    public function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
     {
         return $this->query()
+            ->when($directory, fn($q) => $q->where('directory', $directory))
+            ->when(! $directory, fn($q) => $q->whereNull('directory'))
+            ->when($storage, fn($q) => $q->where('storage', $storage));
+    }
+
+    public function queryRawByDirectory(?string $directory = null, ?string $storage = null): RawBuilder
+    {
+        return $this->raw()
             ->when($directory, fn($q) => $q->where('directory', $directory))
             ->when(! $directory, fn($q) => $q->whereNull('directory'))
             ->when($storage, fn($q) => $q->where('storage', $storage));
