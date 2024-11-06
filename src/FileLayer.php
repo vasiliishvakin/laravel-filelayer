@@ -10,7 +10,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Stringable;
-use Vaskiq\LaravelFileLayer\Contracts\BaseFileWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\DirectoryData;
 use Vaskiq\LaravelFileLayer\Data\FileData;
 use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
@@ -164,7 +163,7 @@ final class FileLayer extends BaseFileLayer
                 $fileData = FileData::from([
                     'path' => $path,
                     'storage' => $storage->name,
-                    'path_info' => $pathInfoData ?? null,
+                    'path_info' => $pathInfoData,
                 ]);
 
                 $file = $this->makeFileWrapper($fileData);
@@ -255,7 +254,7 @@ final class FileLayer extends BaseFileLayer
         );
     }
 
-    public function working(FileWrapper $file): BaseFileWrapperInterface
+    public function working(FileWrapper $file): FileWrapper|TmpFileWrapper
     {
         if ($this->isLocal($file)) {
             return $file;

@@ -6,12 +6,12 @@ namespace Vaskiq\LaravelFileLayer\Wrappers;
 
 use Carbon\CarbonImmutable;
 use Vaskiq\LaravelFileLayer\Contracts\BaseFileWrapperInterface;
-use Vaskiq\LaravelFileLayer\Data\FileSystemItemData;
+use Vaskiq\LaravelFileLayer\Data\BaseFileData;
 use Vaskiq\LaravelFileLayer\Facades\Mime;
 use Vaskiq\LaravelFileLayer\FileLayer\BaseFileLayer;
 
 /**
- * @template TData of FileSystemItemData
+ * @template TData of BaseFileData
  * @template TFileLayer of BaseFileLayer
  *
  * @extends FileSystemItemWrapper<TData, TFileLayer>
@@ -76,5 +76,20 @@ class BaseFileWrapper extends FileSystemItemWrapper implements BaseFileWrapperIn
     public function delete(): bool
     {
         return $this->fileLayer()->delete($this);
+    }
+
+    public function etag(): string
+    {
+        return $this->data()->etag ?? $this->fileLayer()->etag($this);
+    }
+
+    public function hash(): string
+    {
+        return $this->data()->hash ?? $this->fileLayer()->hash($this, $this->hashName());
+    }
+
+    public function hashName(): string
+    {
+        return $this->data()->hash_name ?? $this->fileLayer()::HASH_ALGORITHM;
     }
 }

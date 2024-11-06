@@ -8,4 +8,5 @@ enum FileRefreshedProperties: string
     case MIME = 'mime';
     case LAST_MODIFIED = 'last_modified';
     case URL = 'url';
+    case ETAG = 'etag';
 }

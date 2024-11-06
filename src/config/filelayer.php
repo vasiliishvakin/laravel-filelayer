@@ -11,6 +11,14 @@ return [
         ],
     ],
 
+    'file_name_generator' => [
+        'prefix' => env('FILELAYER_FILE_NAME_PREFIX', 'processed'),
+        'no_actions_name' => env('FILELAYER_FILE_NAME_NO_ACTIONS', 'original'),
+        'folder_1_length' => env('FILELAYER_FILE_NAME_FOLDER_1_LENGTH', 1),
+        'folder_2_length' => env('FILELAYER_FILE_NAME_FOLDER_2_LENGTH', 2),
+        'hash_algorithm' => env('FILELAYER_FILE_NAME_HASH_ALGORITHM', 'sha1'),
+    ],
+
     'image_manager' => [
         'driver' => match (strtolower((string) env('FILELAYER_IMAGE_DRIVER', 'gd'))) {
             'imagick' => \Intervention\Image\Drivers\Imagick\Driver::class,

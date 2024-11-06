@@ -6,6 +6,7 @@ namespace Vaskiq\LaravelFileLayer\FileLayer;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Http\File;
+use League\Flysystem\Config as FlysystemConfig;
 use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Contracts\FileSystemItemWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\PathInfoData;
@@ -20,6 +21,10 @@ use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
  */
 class BaseFileLayer implements FileLayerInterface
 {
+    private const S3_ETAG_CONFIG = ['checksum_algo' => 'etag'];
+
+    private FlysystemConfig $s3EtagConfig;
+
     public function __construct(
         private readonly StorageOperator $storageOperator,
     ) {}
@@ -144,10 +149,57 @@ class BaseFileLayer implements FileLayerInterface
         return preg_replace('/\/+/', '/', $path);
     }
 
+    public function etag(BaseFileWrapper $file): string
+    {
+        return $this->isLocal($file)
+            ? $this->calcStorageEtag($file)
+            : $this->getEtagFromStorage($file) ?? $this->calcStorageEtag($file);
+    }
+
+    public function hash(BaseFileWrapper $file, string $hashName = self::HASH_ALGORITHM): string
+    {
+        return $this->isLocal($file)
+            ? hash_file($hashName, $file->fullPath())
+            : hash($hashName, $this->get($file));
+    }
+
     protected function putToStorage(string $path, string $content, string|StorageWrapper|null $storage = null): bool
     {
         $path = $this->normalizePath($path);
 
         return $this->selectStorage($storage)->put($path, $content);
+    }
+
+    private function s3EtagConfig(): FlysystemConfig
+    {
+        return $this->s3EtagConfig ??= new FlysystemConfig(self::S3_ETAG_CONFIG);
+    }
+
+    private function getEtagFromStorage(BaseFileWrapper $file): ?string
+    {
+        $storage = $this->storageByFile($file);
+
+        /** @var \League\Flysystem\AwsS3V3\AwsS3V3Adapter|null */
+        $adapter = $storage->adapter();
+        if (! $adapter) {
+            return null;
+        }
+
+        if (! $adapter instanceof \League\Flysystem\AwsS3V3\AwsS3V3Adapter) {
+            report(new \InvalidArgumentException(sprintf(
+                'Adapter %s is not supported for etag calculation for storage %s',
+                get_class($adapter),
+                $storage->name
+            )));
+        }
+
+        return $adapter->checksum($file->path(), $this->s3EtagConfig());
+    }
+
+    private function calcStorageEtag(BaseFileWrapper $file): string
+    {
+        return $this->isLocal($file)
+            ? hash_file(self::ETAG_HASH_ALGORITHM, $file->fullPath())
+            : hash(self::ETAG_HASH_ALGORITHM, $this->get($file));
     }
 }

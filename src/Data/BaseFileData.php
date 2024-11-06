@@ -27,6 +27,10 @@ class BaseFileData extends FileSystemItemData
         #[WithCast(DateTimeInterfaceCast::class)]
         public readonly ?CarbonImmutable $last_modified = null,
 
+        public readonly ?string $hash = null,
+        public readonly ?string $hash_name = null,
+        public readonly ?string $etag = null,
+
         public readonly ?string $url = null,
 
         ?PathInfoData $path_info = null,

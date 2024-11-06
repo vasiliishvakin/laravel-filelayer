@@ -48,6 +48,7 @@ class FileWrapper extends BaseFileWrapper
             FileRefreshedProperties::LAST_MODIFIED->value => fn () => $this->fileLayer()->lastModified($this),
             FileRefreshedProperties::MIME->value => fn () => $this->fileLayer()->mime($this),
             FileRefreshedProperties::URL->value => fn () => $this->fileLayer()->url($this),
+            FileRefreshedProperties::ETAG->value => fn () => $this->fileLayer()->etag($this),
         ];
 
         $properties = $properties ?? $this->refreshedProperties();
@@ -109,22 +110,22 @@ class FileWrapper extends BaseFileWrapper
         return $this->fileLayer()->misplaced($this);
     }
 
-    public function sync(): FileWrapper
+    public function sync(): self
     {
         return $this->fileLayer()->sync($this);
     }
 
-    public function working(): static
+    public function working(): self|TmpFileWrapper
     {
         return $this->fileLayer()->working($this);
     }
 
-    public function process(array $actions): static
+    public function process(array $actions): self
     {
         return $this->fileLayer()->process($this, $actions);
     }
 
-    public function processTo(array $actions): static
+    public function processTo(array $actions): self
     {
         return $this->fileLayer()->processTo($this, $actions);
     }
