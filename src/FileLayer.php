@@ -416,8 +416,15 @@ final class FileLayer extends BaseFileLayer
         }
 
         $fileData = $file->data();
+        $path = $this->path($file);
 
         $storage = $this->storageOperator()->storage($storageName);
+
+        $relocatedFileExist = false;
+
+        if ($this->existsPath($path, $storage)) {
+            $storage = $this->etag($file);
+        }
 
         if (! $this->existsPath($this->path($file), $storage)) {
             try {

@@ -111,12 +111,17 @@ class BaseFileLayer implements FileLayerInterface
         );
     }
 
-    public function get(BaseFileWrapper $file): string
+    public function getByPath(string $path, string|StorageWrapper|null $storage = null): string
     {
         return tap(
-            $this->storageByFile($file)->get($this->path($file)),
+            $this->selectStorage($storage)->get($path),
             fn ($value) => Retrieved::dispatch($value)
         );
+    }
+
+    public function get(BaseFileWrapper $file): string
+    {
+        return $this->getByPath($this->path($file), $this->storageByFile($file));
     }
 
     public function laravelFile(BaseFileWrapper $file): File
@@ -156,6 +161,19 @@ class BaseFileLayer implements FileLayerInterface
             : $this->getEtagFromStorage($file) ?? $this->calcStorageEtag($file);
     }
 
+    public function checkFileEtagInStorage(BaseFileWrapper $file, string|StorageWrapper|null $storage = null): bool
+    {
+        $fileEtag = $file->etag();
+        if (! $fileEtag) {
+            return false;
+        }
+
+        $storage = $storage ? $this->selectStorage($storage) : $this->storageByFile($file);
+        $etag = $this->getEtagFromStorage($file, $storage) ?? $this->calcStorageEtag($file, $storage);
+
+        return $file->etag() === $etag;
+    }
+
     public function hash(BaseFileWrapper $file, string $hashName = self::HASH_ALGORITHM): string
     {
         return $this->isLocal($file)
@@ -175,9 +193,9 @@ class BaseFileLayer implements FileLayerInterface
         return $this->s3EtagConfig ??= new FlysystemConfig(self::S3_ETAG_CONFIG);
     }
 
-    private function getEtagFromStorage(BaseFileWrapper $file): ?string
+    private function getEtagFromStorage(BaseFileWrapper $file, string|StorageWrapper|null $storage = null): ?string
     {
-        $storage = $this->storageByFile($file);
+        $storage = $storage ? $this->selectStorage($storage) : $this->storageByFile($file);
 
         /** @var \League\Flysystem\AwsS3V3\AwsS3V3Adapter|null */
         $adapter = $storage->adapter();
@@ -193,13 +211,20 @@ class BaseFileLayer implements FileLayerInterface
             )));
         }
 
-        return $adapter->checksum($file->path(), $this->s3EtagConfig());
+        try {
+            return $adapter->checksum($file->path(), $this->s3EtagConfig());
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
-    private function calcStorageEtag(BaseFileWrapper $file): string
+    private function calcStorageEtag(BaseFileWrapper $file, string|StorageWrapper|null $storage = null): string
     {
-        return $this->isLocal($file)
-            ? hash_file(self::ETAG_HASH_ALGORITHM, $file->fullPath())
-            : hash(self::ETAG_HASH_ALGORITHM, $this->get($file));
+        $storage = $storage ? $this->selectStorage($storage) : $this->storageByFile($file);
+        $path = $storage->path($this->path($file));
+
+        return $this->storageOperator()->isLocal($storage)
+            ? hash_file(self::ETAG_HASH_ALGORITHM, $path)
+            : hash(self::ETAG_HASH_ALGORITHM, $this->getByPath($path));
     }
 }
