@@ -104,7 +104,7 @@ final class FileLayer extends BaseFileLayer
 
             return tap(
                 $this->makeFileWrapper($fileData),
-                fn ($file) => Founded::dispatch($file)
+                fn($file) => Founded::dispatch($file)
             );
         }
 
@@ -117,7 +117,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->makeFileWrapper($fileDataWithStorage),
-                    fn ($file) => Founded::dispatch($file)
+                    fn($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -149,7 +149,7 @@ final class FileLayer extends BaseFileLayer
             }
 
             $exist = rescue(
-                fn () => $storage->exists($path),
+                fn() => $storage->exists($path),
                 function ($e) use ($path, $storage) {
                     Log::error(sprintf('Error (%s) on exists check "%s" on storage "%s": "%s"', class_basename($e), $path, $storage->name, $e->getMessage()), filelayer_log_context());
 
@@ -170,7 +170,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->register($file),
-                    fn ($file) => Founded::dispatch($file)
+                    fn($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -250,7 +250,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($fileWrapper),
-            fn ($file) => Copied::dispatch($file)
+            fn($file) => Copied::dispatch($file)
         );
     }
 
@@ -296,7 +296,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($file),
-            fn ($file) => Stored::dispatch($file)
+            fn($file) => Stored::dispatch($file)
         );
     }
 
@@ -318,7 +318,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $file,
-            fn ($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
+            fn($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
         );
     }
 
@@ -355,9 +355,9 @@ final class FileLayer extends BaseFileLayer
             $pipeline->send($workingFile)
                 ->through($actions)
                 ->then(
-                    fn ($file) => $this->put($newPath, $this->get($workingFile))
+                    fn($file) => $this->put($newPath, $this->get($workingFile))
                 ),
-            fn ($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
+            fn($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
         );
     }
 
@@ -415,16 +415,20 @@ final class FileLayer extends BaseFileLayer
             return $file;
         }
 
+        $storage = $this->selectStorage($storageName);
+
+        if ($file->storage() === $storage->name) {
+            return $file;
+        }
+
         $fileData = $file->data();
         $path = $this->path($file);
 
-        $storage = $this->storageOperator()->storage($storageName);
+        // $relocateExistedFile = false;
 
-        $relocatedFileExist = false;
-
-        if ($this->existsPath($path, $storage)) {
-            $storage = $this->etag($file);
-        }
+        // if ($this->existsPath($path, $storage) && $this->checkFileEtagInStorage($file, $storage)) {
+        //     $storage = $this->etag($file);
+        // }
 
         if (! $this->existsPath($this->path($file), $storage)) {
             try {
@@ -484,7 +488,7 @@ final class FileLayer extends BaseFileLayer
         if (! $file->repositoryId() || $dirty) {
             return tap(
                 $this->register($file),
-                fn ($file) => Synced::dispatch($file)
+                fn($file) => Synced::dispatch($file)
             );
         }
 
@@ -534,7 +538,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->makeFileWrapper($fileData),
-            fn ($file) => Registered::dispatch($file)
+            fn($file) => Registered::dispatch($file)
         );
     }
 
