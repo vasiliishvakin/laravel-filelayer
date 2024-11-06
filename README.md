@@ -11,7 +11,7 @@ The Laravel File Layer package provides a flexible and powerful API for managing
 
 4. **[Spatie Laravel Data](https://github.com/spatie/laravel-data)** - Data transfer object package for handling structured data in Laravel applications.
 
-5. **[Vaskiq Data Layer](https://github.com/vaskiq/laravel-datalayer)** - Custom data layer for handling repositories, events, and DTOs in Laravel.
+5. **[Vaskiq Data Layer](https://github.com/vasiliishvakin/laravel-datalayer)** - Custom data layer for handling repositories, events, and DTOs in Laravel.
 
 
 ## Installation
