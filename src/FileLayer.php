@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 use Stringable;
 use Vaskiq\LaravelFileLayer\Data\DirectoryData;
 use Vaskiq\LaravelFileLayer\Data\FileData;
-use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
+use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperty;
+use Vaskiq\LaravelFileLayer\Enums\FileSystemItemType;
 use Vaskiq\LaravelFileLayer\Events\Copied;
 use Vaskiq\LaravelFileLayer\Events\Deleted;
 use Vaskiq\LaravelFileLayer\Events\Finding;
@@ -104,7 +105,7 @@ final class FileLayer extends BaseFileLayer
 
             return tap(
                 $this->makeFileWrapper($fileData),
-                fn($file) => Founded::dispatch($file)
+                fn ($file) => Founded::dispatch($file)
             );
         }
 
@@ -117,7 +118,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->makeFileWrapper($fileDataWithStorage),
-                    fn($file) => Founded::dispatch($file)
+                    fn ($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -149,7 +150,7 @@ final class FileLayer extends BaseFileLayer
             }
 
             $exist = rescue(
-                fn() => $storage->exists($path),
+                fn () => $storage->exists($path),
                 function ($e) use ($path, $storage) {
                     Log::error(sprintf('Error (%s) on exists check "%s" on storage "%s": "%s"', class_basename($e), $path, $storage->name, $e->getMessage()), filelayer_log_context());
 
@@ -170,7 +171,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->register($file),
-                    fn($file) => Founded::dispatch($file)
+                    fn ($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -250,7 +251,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($fileWrapper),
-            fn($file) => Copied::dispatch($file)
+            fn ($file) => Copied::dispatch($file)
         );
     }
 
@@ -296,7 +297,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($file),
-            fn($file) => Stored::dispatch($file)
+            fn ($file) => Stored::dispatch($file)
         );
     }
 
@@ -318,7 +319,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $file,
-            fn($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
+            fn ($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
         );
     }
 
@@ -355,17 +356,71 @@ final class FileLayer extends BaseFileLayer
             $pipeline->send($workingFile)
                 ->through($actions)
                 ->then(
-                    fn($file) => $this->put($newPath, $this->get($workingFile))
+                    fn ($file) => $this->put($newPath, $this->get($workingFile))
                 ),
-            fn($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
+            fn ($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
         );
     }
 
     /**
+     * @param  array<array|string|StorageWrapper>  $storage
+     */
+    public function rawStorageFiles(string $path, array|string|StorageWrapper|null $storage = null): Collection
+    {
+        return $this->rawStorageItemsByType($path, $storage, FileSystemItemType::FILE);
+    }
+
+    /**
+     * @param  array<array|string|StorageWrapper>  $storage
+     */
+    public function rawStorageDirectories(string $path, array|string|StorageWrapper|null $storage = null): Collection
+    {
+        return $this->rawStorageItemsByType($path, $storage, FileSystemItemType::DIRECTORY);
+    }
+
+    public function repositoryDirectory(
+        string $path,
+        array|string|StorageWrapper|null $storage = null,
+        ?FileSystemItemType $type = null,
+    ): DirectoryData {
+        $path = $this->normalizePath($path);
+
+        $storages = is_null($storage) ? null : $this->selectStorages($storage);
+
+        $storageNames = is_null($storage) ? null : array_map(fn ($storage) => $storage->name, $storages);
+
+        return $this->fileRepository()->directory($path, $storageNames, $type);
+    }
+
+    /**
+     * @deprecated
+     *
+     * @param  array<array|string|StorageWrapper>  $storage
      * @return Collection<int, FileWrapper>
      */
-    public function files(DirectoryWrapper $directory): Collection
+    public function files(DirectoryWrapper $directory, array|string|StorageWrapper|null $storage = null): Collection
     {
+        $path = $this->path($directory);
+
+        if (is_null($storage) && $directory->storage()) {
+            $storage = $directory->storage();
+        }
+
+        $storages = is_array($storage) ? $storage : [$storage];
+
+        $storages = array_map(fn ($storage) => $this->selectStorage($storage), $storages);
+
+        $allFiles = [];
+        foreach ($storages as $storage) {
+            if ($this->existsPath($path, $storage)) {
+                $files = $storage->files($path);
+                $allFiles += array_fill_keys($files, $storage->name);
+            }
+        }
+        if (empty($allFiles)) {
+            return collect();
+        }
+
         $storage = $this->storageByFile($directory);
         $files = $storage->files($this->path($directory));
 
@@ -388,6 +443,8 @@ final class FileLayer extends BaseFileLayer
     }
 
     /**
+     * @deprecated
+     *
      * @return Collection<int, DirectoryWrapper>
      */
     public function directories(DirectoryWrapper $directory): Collection
@@ -463,7 +520,7 @@ final class FileLayer extends BaseFileLayer
 
         $file = $this->makeFileWrapper($fileData);
 
-        $file = $file->incomplete() ? $file->refresh() : $file->refresh(FileRefreshedProperties::URL);
+        $file = $file->incomplete() ? $file->refresh() : $file->refresh(FileRefreshedProperty::URL);
 
         Relocated::dispatch($file);
 
@@ -488,7 +545,7 @@ final class FileLayer extends BaseFileLayer
         if (! $file->repositoryId() || $dirty) {
             return tap(
                 $this->register($file),
-                fn($file) => Synced::dispatch($file)
+                fn ($file) => Synced::dispatch($file)
             );
         }
 
@@ -497,20 +554,116 @@ final class FileLayer extends BaseFileLayer
         return $file;
     }
 
-    public function directory(string $path, string|StorageWrapper|null $storage = null): DirectoryWrapper
+    public function directory(string $path, array|string|StorageWrapper|null $storage = null): ?DirectoryWrapper
     {
         $path = $this->normalizePath($path);
 
-        $storage = $storage instanceof StorageWrapper
-            ? $storage
-            : $this->storageByName($storage);
+        $storages = $this->selectStorages($storage);
 
-        $directoryData = DirectoryData::from([
+        $rawFiles = $this->rawStorageFiles($path, $storages)
+            ->sortBy(fn ($file) => $file['storage'])
+            ->unique(fn ($file) => $file['path'])
+            ->values();
+        $rawDirectories = $this->rawStorageDirectories($path, $storages);
+
+        $rpDirectory = $this->repositoryDirectory($path, $storage, FileSystemItemType::FILE);
+
+        $rpFiles = $rpDirectory->files ?? collect();
+        $rpFilesKeys = $rpFiles->keyBy(fn ($file) => $file->path);
+
+        $files = $rawFiles->map(function ($file) use ($rpFilesKeys) {
+            $currPath = $file['path'];
+            $currStorage = $file['storage'];
+            $rpData = $rpFilesKeys[$currPath] ?? null;
+            $fileData = $rpData && $rpData->storage === $currStorage
+                ? $rpData
+                : FileData::from([
+                    'path' => $currPath,
+                    'storage' => $currStorage,
+                ]);
+
+            return $this->makeFileWrapper($fileData);
+        });
+
+        $directories = $rawDirectories->map(function ($directory) {
+            $directoryData = DirectoryData::from([
+                'path' => $directory['path'],
+                'storage' => $directory['storage'],
+            ]);
+
+            return $this->makeDirectoryWrapper($directoryData);
+        });
+
+        $resultStorage = is_null($storage)
+            ? null
+            : (
+                ! is_array($storage)
+                ? $storage->name
+                : (
+                    count($storage) === 1
+                    ? $storage[0]->name
+                    : null
+                )
+            );
+
+        $directory = $this->makeDirectoryWrapper(DirectoryData::from([
             'path' => $path,
-            'storage' => $storage->name,
-        ]);
+            'storage' => $resultStorage,
+            'files' => $files,
+            'directories' => $directories,
+        ]));
 
-        return $this->makeDirectoryWrapper($directoryData);
+        return $directory;
+    }
+
+    private function selectStorages(array|string|StorageWrapper|null $storages): array
+    {
+        $storages = is_array($storages) ? $storages : [$storages];
+        $storages = array_map(fn ($storage) => $this->selectStorage($storage), $storages);
+
+        return $storages;
+    }
+
+    /**
+     * @param  array<array|string|StorageWrapper>  $storage
+     * @return \Illuminate\Support\Collection<int, array{
+     *     path: string,
+     *     storage: string,
+     *     type: FileSystemItemType
+     * }>
+     */
+    private function rawStorageItemsByType(
+        string $path,
+        array|string|StorageWrapper|null $storage = null,
+        FileSystemItemType $type = FileSystemItemType::FILE,
+    ): Collection {
+        $path = $this->normalizePath($path);
+
+        $storages = $this->selectStorages($storage);
+
+        $items = [];
+        foreach ($storages as $storage) {
+            if ($this->existsPath($path, $storage)) {
+                $files = $storage->files($path);
+                $items += array_fill_keys($files, $storage->name);
+            }
+        }
+        if (empty($items)) {
+            return collect();
+        }
+
+        $itemsData = [];
+        foreach ($items as $filePath => $storageName) {
+            $itemData = [
+                'path' => (string) $filePath,
+                'storage' => (string) $storageName,
+                'type' => FileSystemItemType::FILE,
+            ];
+
+            $itemsData[] = $itemData;
+        }
+
+        return collect($itemsData);
     }
 
     private function getPipeline(): Pipeline
@@ -538,7 +691,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->makeFileWrapper($fileData),
-            fn($file) => Registered::dispatch($file)
+            fn ($file) => Registered::dispatch($file)
         );
     }
 

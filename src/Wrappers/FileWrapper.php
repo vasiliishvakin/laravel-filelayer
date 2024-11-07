@@ -6,7 +6,7 @@ namespace Vaskiq\LaravelFileLayer\Wrappers;
 
 use Illuminate\Http\File;
 use Vaskiq\LaravelFileLayer\Data\FileData;
-use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperties;
+use Vaskiq\LaravelFileLayer\Enums\FileRefreshedProperty;
 use Vaskiq\LaravelFileLayer\Events\Refreshed;
 use Vaskiq\LaravelFileLayer\FileLayer;
 
@@ -39,16 +39,16 @@ class FileWrapper extends BaseFileWrapper
     }
 
     /**
-     * @param  array<FileRefreshedProperties>|FileRefreshedProperties|null  $properties
+     * @param  array<FileRefreshedProperty>|FileRefreshedProperty|null  $properties
      */
-    public function refresh(array|FileRefreshedProperties|null $properties = null): self
+    public function refresh(array|FileRefreshedProperty|null $properties = null): self
     {
         $updaters = [
-            FileRefreshedProperties::SIZE->value => fn () => $this->fileLayer()->size($this),
-            FileRefreshedProperties::LAST_MODIFIED->value => fn () => $this->fileLayer()->lastModified($this),
-            FileRefreshedProperties::MIME->value => fn () => $this->fileLayer()->mime($this),
-            FileRefreshedProperties::URL->value => fn () => $this->fileLayer()->url($this),
-            FileRefreshedProperties::ETAG->value => fn () => $this->fileLayer()->etag($this),
+            FileRefreshedProperty::SIZE->value => fn () => $this->fileLayer()->size($this),
+            FileRefreshedProperty::LAST_MODIFIED->value => fn () => $this->fileLayer()->lastModified($this),
+            FileRefreshedProperty::MIME->value => fn () => $this->fileLayer()->mime($this),
+            FileRefreshedProperty::URL->value => fn () => $this->fileLayer()->url($this),
+            FileRefreshedProperty::ETAG->value => fn () => $this->fileLayer()->etag($this),
         ];
 
         $properties = $properties ?? $this->refreshedProperties();
@@ -57,7 +57,7 @@ class FileWrapper extends BaseFileWrapper
         }
 
         $fileProperties = [];
-        /** @var FileRefreshedProperties $property */
+        /** @var FileRefreshedProperty $property */
         foreach ($properties as $property) {
             $filePropertyName = $property->value;
             if (array_key_exists($filePropertyName, $updaters)) {
@@ -146,10 +146,10 @@ class FileWrapper extends BaseFileWrapper
     }
 
     /**
-     * @return array<FileRefreshedProperties>
+     * @return array<FileRefreshedProperty>
      */
     protected function refreshedProperties(): array
     {
-        return FileRefreshedProperties::cases();
+        return FileRefreshedProperty::cases();
     }
 }

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Repositories;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as RawBuilder;
 use Illuminate\Support\Collection;
 use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
 use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
+use Vaskiq\LaravelFileLayer\Data\DirectoryData;
 use Vaskiq\LaravelFileLayer\Data\FileData;
+use Vaskiq\LaravelFileLayer\Enums\FileSystemItemType;
 use Vaskiq\LaravelFileLayer\Models\File;
-use \Illuminate\Database\Query\Builder as RawBuilder;
 
 /**
  * @extends EloquentRepository<FileData, File>
@@ -48,9 +50,9 @@ final class FileRepository extends EloquentRepository
     {
         return $this->queryByDirectory($directory, $storage)
             // @phpstan-ignore argument.type
-            ->when($limit, fn($q) => $q->limit($limit))
+            ->when($limit, fn ($q) => $q->limit($limit))
             // @phpstan-ignore argument.type
-            ->when($offset, fn($q) => $q->offset($offset))
+            ->when($offset, fn ($q) => $q->offset($offset))
             ->pluck('path');
     }
 
@@ -85,37 +87,69 @@ final class FileRepository extends EloquentRepository
     /**
      * @return Builder<File>
      */
-    public function queryByDirectory(?string $directory = null, ?string $storage = null): Builder
+    public function queryByDirectory(?string $directory = null, array|string|null $storage = null): Builder
     {
         return $this->query()
-            ->when($directory, fn($q) => $q->where('directory', $directory))
-            ->when(! $directory, fn($q) => $q->whereNull('directory'))
-            ->when($storage, fn($q) => $q->where('storage', $storage));
+            ->when($directory, fn (Builder $q) => $q->where('directory', $directory))
+            ->when(! $directory, fn (Builder $q) => $q->whereNull('directory'))
+            ->when($storage, function (Builder $q, $storage) {
+                if (is_array($storage)) {
+                    if (! empty($storage)) {
+                        $q->whereIn('storage', $storage);
+                    }
+                } else {
+                    $q->where('storage', $storage);
+                }
+            });
     }
 
-    public function queryRawByDirectory(?string $directory = null, ?string $storage = null): RawBuilder
+    public function queryRawByDirectory(?string $directory = null, array|string|null $storage = null): RawBuilder
     {
         return $this->raw()
-            ->when($directory, fn($q) => $q->where('directory', $directory))
-            ->when(! $directory, fn($q) => $q->whereNull('directory'))
-            ->when($storage, fn($q) => $q->where('storage', $storage));
+            ->when($directory, fn (RawBuilder $q) => $q->where('directory', $directory))
+            ->when(! $directory, fn (RawBuilder $q) => $q->whereNull('directory'))
+            ->when($storage, function (RawBuilder $q, $storage) {
+                if (is_array($storage)) {
+                    if (count($storage) > 0) {
+                        $q->whereIn('storage', $storage);
+                    }
+                } else {
+                    $q->where('storage', $storage);
+                }
+            });
     }
 
     /**
      * @return Builder<File>
      */
-    public function queryByPath(string $path, ?string $storage = null): Builder
+    public function queryByPath(string $path, array|string|null $storage = null): Builder
     {
         return $this->query()
             ->where('path', $path)
-            ->when($storage, fn($q) => $q->where('storage', $storage));
+            ->when($storage, function (Builder $q, $storage) {
+                if (is_array($storage)) {
+                    if (count($storage) > 0) {
+                        $q->whereIn('storage', $storage);
+                    }
+                } else {
+                    $q->where('storage', $storage);
+                }
+            });
     }
 
-    public function queryRawByPath(string $path, ?string $storage = null): RawBuilder
+    public function queryRawByPath(string $path, array|string|null $storage = null): RawBuilder
     {
         return $this->raw()
             ->where('path', $path)
-            ->when($storage, fn($q) => $q->where('storage', $storage));
+            ->when($storage, function (RawBuilder $q, $storage) {
+                if (is_array($storage)) {
+                    if (count($storage) > 0) {
+                        $q->whereIn('storage', $storage);
+                    }
+                } else {
+                    $q->where('storage', $storage);
+                }
+            });
     }
 
     public function url(string $path, ?string $storage = null): ?string
@@ -123,5 +157,55 @@ final class FileRepository extends EloquentRepository
         $result = $this->queryRawByPath($path, $storage)->first('url');
 
         return $result?->url;
+    }
+
+    public function directory(?string $path = null, array|string|null $storage = null, ?FileSystemItemType $type = null): DirectoryData
+    {
+        $files = null;
+        $query = $this->queryByDirectory($path, $storage);
+        if ($type !== FileSystemItemType::DIRECTORY) {
+            $files = $query->get();
+            $files = $this->toDataCollection($files);
+        }
+
+        $segmentCount = substr_count($path, '/') + 1;
+
+        $directories = null;
+        if ($type !== FileSystemItemType::FILE) {
+            $queryDirs = $this->raw()
+                ->selectRaw("DISTINCT SUBSTRING_INDEX(directory, '/', ?) AS first_level_dir, storage", [$segmentCount + 1])
+                ->where('directory', 'LIKE', $path.'/%')
+                ->where('directory', '!=', $path)
+                ->when($storage, function (RawBuilder $q, $storage) {
+                    if (is_array($storage)) {
+                        if (count($storage) > 0) {
+                            $q->whereIn('storage', $storage);
+                        }
+                    } else {
+                        $q->where('storage', $storage);
+                    }
+                });
+            $directories = $queryDirs->get('first_level_dir');
+            $directories = $directories->map(fn ($dir) => DirectoryData::from([
+                'path' => $dir->first_level_dir,
+                'storage' => $dir->storage,
+            ]));
+        }
+
+        $resultStorage = null;
+        if (is_array($storage)) {
+            if (count($storage) === 1) {
+                $resultStorage = $storage[0];
+            }
+        }
+
+        $result = DirectoryData::from([
+            'path' => $path,
+            'storage' => $resultStorage,
+            'files' => $files,
+            'directories' => $directories,
+        ]);
+
+        return $result;
     }
 }

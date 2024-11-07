@@ -136,6 +136,8 @@ class BaseFileLayer implements FileLayerInterface
 
     public function existsPath(string $path, string|StorageWrapper|null $storage = null): bool
     {
+        $storage = $this->selectStorage($storage);
+
         return tap(
             $this->selectStorage($storage)->exists($path),
             fn ($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])

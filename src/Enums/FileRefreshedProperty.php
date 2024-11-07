@@ -2,7 +2,7 @@
 
 namespace Vaskiq\LaravelFileLayer\Enums;
 
-enum FileRefreshedProperties: string
+enum FileRefreshedProperty: string
 {
     case SIZE = 'size';
     case MIME = 'mime';
