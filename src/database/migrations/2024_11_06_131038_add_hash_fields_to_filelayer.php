@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('filelayer', function (Blueprint $table) {
+        Schema::table('file_layer_files', function (Blueprint $table) {
             $table->string('hash')->nullable()->after('path');
             $table->string('hash_name')->nullable()->after('hash');
             $table->string('etag')->nullable()->after('hash_name');
@@ -26,7 +26,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('filelayer', function (Blueprint $table) {
+        Schema::table('file_layer_files', function (Blueprint $table) {
             $table->dropColumn('hash');
             $table->dropColumn('hash_name');
             $table->dropColumn('etag');
