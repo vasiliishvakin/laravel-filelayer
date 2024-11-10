@@ -392,80 +392,6 @@ final class FileLayer extends BaseFileLayer
         return $this->fileRepository()->directory($path, $storageNames, $type);
     }
 
-    /**
-     * @deprecated
-     *
-     * @param  array<array|string|StorageWrapper>  $storage
-     * @return Collection<int, FileWrapper>
-     */
-    public function files(DirectoryWrapper $directory, array|string|StorageWrapper|null $storage = null): Collection
-    {
-        $path = $this->path($directory);
-
-        if (is_null($storage) && $directory->storage()) {
-            $storage = $directory->storage();
-        }
-
-        $storages = is_array($storage) ? $storage : [$storage];
-
-        $storages = array_map(fn ($storage) => $this->selectStorage($storage), $storages);
-
-        $allFiles = [];
-        foreach ($storages as $storage) {
-            if ($this->existsPath($path, $storage)) {
-                $files = $storage->files($path);
-                $allFiles += array_fill_keys($files, $storage->name);
-            }
-        }
-        if (empty($allFiles)) {
-            return collect();
-        }
-
-        $storage = $this->storageByFile($directory);
-        $files = $storage->files($this->path($directory));
-
-        if (empty($files)) {
-            return collect();
-        }
-
-        $filesData = $this->fileRepository()
-            ->filesInDirectory($this->path($directory), $storage->name)
-            ->keyBy('path');
-
-        return collect($files)->map(function ($filePath) use ($filesData, $storage) {
-            $fileData = $filesData->get($filePath) ?? FileData::from([
-                'path' => $filePath,
-                'storage' => $storage->name,
-            ]);
-
-            return $this->makeFileWrapper($fileData);
-        });
-    }
-
-    /**
-     * @deprecated
-     *
-     * @return Collection<int, DirectoryWrapper>
-     */
-    public function directories(DirectoryWrapper $directory): Collection
-    {
-        $storage = $this->storageByFile($directory);
-        $directories = $storage->directories($this->path($directory));
-
-        if (empty($directories)) {
-            return collect();
-        }
-
-        return collect($directories)->map(function ($directoryPath) use ($storage) {
-            $directoryData = DirectoryData::from([
-                'path' => $directoryPath,
-                'storage' => $storage->name,
-            ]);
-
-            return $this->makeDirectoryWrapper($directoryData);
-        });
-    }
-
     public function relocate(FileWrapper $file, ?string $storageName = null, array $options = []): FileWrapper
     {
         if (! $this->relationEnabled) {
@@ -616,6 +542,28 @@ final class FileLayer extends BaseFileLayer
         return $directory;
     }
 
+    public function deleteByPath(string $path, ?string $storage = null): bool
+    {
+        $path = $this->normalizePath($path);
+
+        $rpFile = $this->fileRepository()->findByPath($path, $storage);
+        if ($rpFile) {
+            $this->fileRepository()->delete($rpFile->id);
+        }
+
+        $storages = $storage
+            ? [$this->selectStorage($storage)]
+            : $this->storageOperator()->storages();
+
+        foreach ($storages as $storage) {
+            if ($this->existsPath($path, $storage)) {
+                return $storage->delete($path);
+            }
+        }
+
+        return true;
+    }
+
     private function selectStorages(array|string|StorageWrapper|null $storages): array
     {
         $storages = is_array($storages) ? $storages : [$storages];
@@ -644,8 +592,11 @@ final class FileLayer extends BaseFileLayer
         $items = [];
         foreach ($storages as $storage) {
             if ($this->existsPath($path, $storage)) {
-                $files = $storage->files($path);
-                $items += array_fill_keys($files, $storage->name);
+                $currentItems = match ($type) {
+                    FileSystemItemType::FILE => $storage->files($path),
+                    FileSystemItemType::DIRECTORY => $storage->directories($path),
+                };
+                $items += array_fill_keys($currentItems, $storage->name);
             }
         }
         if (empty($items)) {

@@ -14,16 +14,21 @@ class DirectoryWrapper extends FileSystemItemWrapper
     /**
      * @return Collection<int, FileWrapper>
      */
-    public function files(): Collection
+    public function files(): ?Collection
     {
-        return $this->fileLayer->files($this);
+        return $this->data()->files;
     }
 
     /**
      * @return Collection<int, self>
      */
-    public function directories(): Collection
+    public function directories(): ?Collection
     {
-        return $this->fileLayer->directories($this);
+        return $this->data()->directories;
+    }
+
+    public function name(): string
+    {
+        return $this->data()->name;
     }
 }
