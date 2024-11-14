@@ -7,6 +7,7 @@ namespace Vaskiq\LaravelFileLayer\FileLayer;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\File;
 use League\Flysystem\Config as FlysystemConfig;
+use Symfony\Component\Filesystem\Path;
 use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
 use Vaskiq\LaravelFileLayer\Contracts\FileSystemItemWrapperInterface;
 use Vaskiq\LaravelFileLayer\Data\PathInfoData;
@@ -115,7 +116,7 @@ class BaseFileLayer implements FileLayerInterface
     {
         return tap(
             $this->selectStorage($storage)->get($path),
-            fn ($value) => Retrieved::dispatch($value)
+            fn($value) => Retrieved::dispatch($value)
         );
     }
 
@@ -140,7 +141,7 @@ class BaseFileLayer implements FileLayerInterface
 
         return tap(
             $this->selectStorage($storage)->exists($path),
-            fn ($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
+            fn($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
         );
     }
 
@@ -153,7 +154,7 @@ class BaseFileLayer implements FileLayerInterface
     {
         $path = ltrim($path, '/');
 
-        return preg_replace('/\/+/', '/', $path);
+        return Path::normalize($path);
     }
 
     public function etag(BaseFileWrapper $file): string

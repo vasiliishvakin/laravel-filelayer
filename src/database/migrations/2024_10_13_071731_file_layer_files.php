@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('last_modified');
             $table->string('source')->nullable();
             $table->string('alias')->nullable();
-            $table->string('url')->nullable();
+            $table->text('url')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
 
