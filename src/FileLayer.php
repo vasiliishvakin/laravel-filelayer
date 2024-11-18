@@ -329,13 +329,14 @@ final class FileLayer extends BaseFileLayer
     public function processTo(
         FileWrapper $file,
         array|string $actions,
-        string|Stringable|callable|null $newPath = null
+        string|Stringable|callable|null $newPath = null,
+        bool $force = false
     ): FileWrapper {
 
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
         $newPath = $this->normalizePath($newPath);
 
-        if ($existingFile = $this->fileByPath($newPath)) {
+        if (!$force && $existingFile = $this->fileByPath($newPath)) {
             Processed::dispatch(['file' => $file, 'newFile' => $existingFile, 'actions' => $actions]);
 
             return $existingFile;
@@ -413,7 +414,7 @@ final class FileLayer extends BaseFileLayer
         //     $storage = $this->etag($file);
         // }
 
-        if (! $this->existsPath($this->path($file), $storage)) {
+        if (! $this->existsPath($this->path($file), $storage) || !$this->checkFileEtagInStorage($file, $storage)) {
             try {
                 if ($file->isLocal()) {
                     $newPath = $storage->putFileAs(
