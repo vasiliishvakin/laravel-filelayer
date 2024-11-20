@@ -56,4 +56,19 @@ class DirectoryWrapper extends FileSystemItemWrapper
 
         return ($this->directories?->count() ?? 0) + ($this->files?->count() ?? 0);
     }
+
+    public function emptyFiles(): bool
+    {
+        return $this->files?->isEmpty() ?? true;
+    }
+
+    public function emptyDirectories(): bool
+    {
+        return $this->directories?->isEmpty() ?? true;
+    }
+
+    public function empty(): bool
+    {
+        return $this->emptyFiles() && $this->emptyDirectories();
+    }
 }

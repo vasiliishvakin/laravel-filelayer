@@ -330,7 +330,8 @@ final class FileLayer extends BaseFileLayer
         FileWrapper $file,
         array|string $actions,
         string|Stringable|callable|null $newPath = null,
-        bool $force = false
+        bool $force = false,
+        bool $defer = false,
     ): FileWrapper {
 
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
@@ -496,8 +497,10 @@ final class FileLayer extends BaseFileLayer
         $storages = $this->selectStorages($storage);
 
         $rawFiles = $this->rawStorageFiles($path, $storages)
-            ->sortBy(fn($file) => $file['storage'])
-            ->unique(fn($file) => $file['path'])
+            ->when(count($storages) > 1, function (Collection $files) {
+                return  $files->sortBy(fn($file) => $file['storage'])
+                    ->unique(fn($file) => $file['path']);
+            })
             ->values();
         $rawDirectories = $this->rawStorageDirectories($path, $storages);
 
