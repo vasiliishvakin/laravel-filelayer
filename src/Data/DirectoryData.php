@@ -15,13 +15,13 @@ class DirectoryData extends FileSystemItemData
     public readonly ?string $name;
 
     /**
-     * @param Collection<int, FileWrapper>|null $files
-     * @param Collection<int, DirectoryWrapper>|null $directories
+     * @param  Collection<int, FileWrapper>|null  $files
+     * @param  Collection<int, DirectoryWrapper>|null  $directories
      */
     public function __construct(
         ?string $path = null,
         ?string $storage = null,
-        public readonly ?Collection  $files = null,
+        public readonly ?Collection $files = null,
         public readonly ?Collection $directories = null,
     ) {
         parent::__construct(path: $path, storage: $storage);

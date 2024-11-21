@@ -35,7 +35,7 @@ class FileNameGeneratorByActions
         $hashPath = Str::of($file->path())
             ->trim('/')
             ->lower()
-            ->pipe(fn($path) => Str::of(hash($this->hashAlgorithm, (string) $path)));
+            ->pipe(fn ($path) => Str::of(hash($this->hashAlgorithm, (string) $path)));
 
         $extension = $file->extension();
         $fileName = $hashPath->append('.')->append($extension);
@@ -53,10 +53,11 @@ class FileNameGeneratorByActions
             : implode(
                 '_',
                 array_map(
-                    fn($action) => Str::of($action)->classBasename()->lower()->replace(['-', '_'], ''),
+                    fn ($action) => Str::of($action)->classBasename()->lower()->replace(['-', '_'], ''),
                     $actions
                 )
             );
+
         return $actionClassesString;
     }
 

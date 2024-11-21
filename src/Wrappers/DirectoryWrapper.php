@@ -8,11 +8,11 @@ use Vaskiq\LaravelFileLayer\FileLayer;
 
 /**
  * @mixin DirectoryData
+ *
  * @extends FileSystemItemWrapper<DirectoryData, FileLayer>
  */
 class DirectoryWrapper extends FileSystemItemWrapper
 {
-
     public function __get($name)
     {
         if (property_exists($this->data(), $name)) {
@@ -24,6 +24,7 @@ class DirectoryWrapper extends FileSystemItemWrapper
 
     /**
      * @deprecated
+     *
      * @return Collection<int, FileWrapper>
      */
     public function files(): ?Collection
@@ -33,6 +34,7 @@ class DirectoryWrapper extends FileSystemItemWrapper
 
     /**
      * @deprecated
+     *
      * @return Collection<int, self>
      */
     public function directories(): ?Collection

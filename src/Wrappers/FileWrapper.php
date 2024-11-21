@@ -44,11 +44,11 @@ class FileWrapper extends BaseFileWrapper
     public function refresh(array|FileRefreshedProperty|null $properties = null): self
     {
         $updaters = [
-            FileRefreshedProperty::SIZE->value => fn() => $this->fileLayer()->size($this),
-            FileRefreshedProperty::LAST_MODIFIED->value => fn() => $this->fileLayer()->lastModified($this),
-            FileRefreshedProperty::MIME->value => fn() => $this->fileLayer()->mime($this),
-            FileRefreshedProperty::URL->value => fn() => $this->fileLayer()->url($this),
-            FileRefreshedProperty::ETAG->value => fn() => $this->fileLayer()->etag($this),
+            FileRefreshedProperty::SIZE->value => fn () => $this->fileLayer()->size($this),
+            FileRefreshedProperty::LAST_MODIFIED->value => fn () => $this->fileLayer()->lastModified($this),
+            FileRefreshedProperty::MIME->value => fn () => $this->fileLayer()->mime($this),
+            FileRefreshedProperty::URL->value => fn () => $this->fileLayer()->url($this),
+            FileRefreshedProperty::ETAG->value => fn () => $this->fileLayer()->etag($this),
         ];
 
         $properties = $properties ?? $this->refreshedProperties();
@@ -84,7 +84,7 @@ class FileWrapper extends BaseFileWrapper
 
         return tap(
             $this->fileLayer()->makeFileWrapper($data),
-            fn($file) => Refreshed::dispatch($file)
+            fn ($file) => Refreshed::dispatch($file)
         );
     }
 

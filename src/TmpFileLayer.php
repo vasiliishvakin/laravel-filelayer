@@ -29,7 +29,7 @@ final class TmpFileLayer extends BaseFileLayer
         $this->registerShutdownHandler();
     }
 
-    public function create(?string $content = null, ?string $mime = null): TmpFileWrapper
+    public function create(?string $content = null, ?string $mime = null, bool $lazyDelete = false): TmpFileWrapper
     {
         $extension = $mime ? Mime::extension($mime) : null;
 
@@ -46,7 +46,9 @@ final class TmpFileLayer extends BaseFileLayer
         if ($this->existByKey($file->toKey())) {
             throw TmpFileExistsException::fromPath($file->path(), $file->storage());
         }
-        $this->tmpFiles[$file->toKey()] = $file;
+        if (! $lazyDelete) {
+            $this->tmpFiles[$file->toKey()] = $file;
+        }
 
         return $file;
     }

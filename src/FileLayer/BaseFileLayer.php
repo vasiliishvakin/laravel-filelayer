@@ -116,7 +116,7 @@ class BaseFileLayer implements FileLayerInterface
     {
         return tap(
             $this->selectStorage($storage)->get($path),
-            fn($value) => Retrieved::dispatch($value)
+            fn ($value) => Retrieved::dispatch($value)
         );
     }
 
@@ -141,7 +141,7 @@ class BaseFileLayer implements FileLayerInterface
 
         return tap(
             $this->selectStorage($storage)->exists($path),
-            fn($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
+            fn ($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
         );
     }
 

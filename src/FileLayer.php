@@ -80,9 +80,9 @@ final class FileLayer extends BaseFileLayer
         return DirectoryWrapper::from(data: $directoryData, fileLayer: $this);
     }
 
-    public function makeTmpFileWrapper(?string $mime = null, ?string $content = null): TmpFileWrapper
+    public function makeTmpFileWrapper(?string $mime = null, ?string $content = null, bool $lazyDelete = false): TmpFileWrapper
     {
-        return TmpFile::create(content: $content, mime: $mime);
+        return TmpFile::create(content: $content, mime: $mime, lazyDelete: $lazyDelete);
     }
 
     public function tmpFile(
@@ -105,7 +105,7 @@ final class FileLayer extends BaseFileLayer
 
             return tap(
                 $this->makeFileWrapper($fileData),
-                fn($file) => Founded::dispatch($file)
+                fn ($file) => Founded::dispatch($file)
             );
         }
 
@@ -118,7 +118,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->makeFileWrapper($fileDataWithStorage),
-                    fn($file) => Founded::dispatch($file)
+                    fn ($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -126,7 +126,7 @@ final class FileLayer extends BaseFileLayer
         throw new FileNotFoundException(sprintf('File with id %d not found in storage', $id));
     }
 
-    public function fileByPath(string $path, ?string $storageName = null): ?FileWrapper
+    public function fileByPath(string $path, ?string $storageName = null, bool $register = true): ?FileWrapper
     {
         $path = $this->normalizePath($path);
 
@@ -150,7 +150,7 @@ final class FileLayer extends BaseFileLayer
             }
 
             $exist = rescue(
-                fn() => $storage->exists($path),
+                fn () => $storage->exists($path),
                 function ($e) use ($path, $storage) {
                     Log::error(sprintf('Error (%s) on exists check "%s" on storage "%s": "%s"', class_basename($e), $path, $storage->name, $e->getMessage()), filelayer_log_context());
 
@@ -169,10 +169,14 @@ final class FileLayer extends BaseFileLayer
 
                 $file = $this->makeFileWrapper($fileData);
 
-                return tap(
-                    $this->register($file),
-                    fn($file) => Founded::dispatch($file)
-                );
+                if ($register) {
+                    return tap(
+                        $this->register($file),
+                        fn ($file) => Founded::dispatch($file)
+                    );
+                }
+
+                return $file;
             }
         }
 
@@ -251,7 +255,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($fileWrapper),
-            fn($file) => Copied::dispatch($file)
+            fn ($file) => Copied::dispatch($file)
         );
     }
 
@@ -265,11 +269,37 @@ final class FileLayer extends BaseFileLayer
         return $this->makeTmpFileWrapper($file->mime(), $content);
     }
 
-    public function workingCopy(FileWrapper $file): FileWrapper|TmpFileWrapper
+    public function workingCopy(FileWrapper $file, bool $lazyDelete = false): FileWrapper|TmpFileWrapper
     {
         $content = $this->get($file);
 
-        return $this->makeTmpFileWrapper(mime: $file->mime(), content: $content);
+        return $this->makeTmpFileWrapper(mime: $file->mime(), content: $content, lazyDelete: $lazyDelete);
+    }
+
+    public function workingCopyOn(FileWrapper $file, string $path, string|StorageWrapper $storage): FileWrapper
+    {
+        $storage = $this->selectStorage($storage);
+        if (! $this->storageOperator()->isLocal($storage)) {
+            throw new \InvalidArgumentException('Storage must be local');
+        }
+
+        $path = $this->normalizePath($path);
+        $content = $this->get($file);
+
+        $result = $this->putToStorage($path, $content, $storage);
+        if (! $result) {
+            throw new \Exception(sprintf('Failed to put file to storage %s', $storage->name));
+        }
+
+        $pathInfoData = $this->pathInfo($path, $storage);
+
+        $file = $this->makeFileWrapper(FileData::from([
+            'path' => $path,
+            'storage' => $storage->name,
+            'path_info' => $pathInfoData,
+        ]));
+
+        return $file;
     }
 
     public function put(string $path, string $content, ?string $storageName = null): FileWrapper
@@ -297,7 +327,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($file),
-            fn($file) => Stored::dispatch($file)
+            fn ($file) => Stored::dispatch($file)
         );
     }
 
@@ -319,7 +349,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $file,
-            fn($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
+            fn ($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
         );
     }
 
@@ -337,9 +367,7 @@ final class FileLayer extends BaseFileLayer
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
         $newPath = $this->normalizePath($newPath);
 
-        if (!$force && $existingFile = $this->fileByPath($newPath)) {
-            Processed::dispatch(['file' => $file, 'newFile' => $existingFile, 'actions' => $actions]);
-
+        if (! $force && $existingFile = $this->fileByPath($newPath)) {
             return $existingFile;
         }
 
@@ -358,10 +386,56 @@ final class FileLayer extends BaseFileLayer
             $pipeline->send($workingFile)
                 ->through($actions)
                 ->then(
-                    fn($file) => $this->put($newPath, $this->get($workingFile))
+                    fn ($file) => $this->put($newPath, $this->get($workingFile))
                 ),
-            fn($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
+            fn ($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
         );
+    }
+
+    public function lazyProcessTo(
+        FileWrapper $file,
+        array|string $actions,
+        string|Stringable|callable|null $newPath = null,
+        bool $force = false,
+        string|StorageWrapper|null $tmpStorage = null,
+    ) {
+        $newPath = $this->generatePathForActions($file, $actions, $newPath);
+        $newPath = $this->normalizePath($newPath);
+
+        if (! $force && $existingFile = $this->fileByPath(path: $newPath, register: false)) {
+            return $existingFile;
+        }
+
+        if (empty($actions)) {
+            defer(fn () => $this->copy($file, $newPath));
+
+            return $file;
+        }
+
+        if (! is_array($actions)) {
+            $actions = [$actions];
+        }
+
+        $tmpStorage = $tmpStorage
+            ? $this->selectStorage($tmpStorage)
+            : null;
+
+        $workingFile = $tmpStorage
+            ? $this->workingCopyOn($file, $newPath, $tmpStorage)
+            : $this->workingCopy($file, true);
+
+        $pipeline = $this->getPipeline();
+
+        $resultFile = $pipeline->send($workingFile)
+            ->through($actions)
+            ->thenReturn();
+
+        defer(function () use ($resultFile, $newPath, $file, $actions) {
+            $newFile = $this->put($newPath, $this->get($resultFile));
+            Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions]);
+        });
+
+        return $resultFile;
     }
 
     /**
@@ -389,7 +463,7 @@ final class FileLayer extends BaseFileLayer
 
         $storages = is_null($storage) ? null : $this->selectStorages($storage);
 
-        $storageNames = is_null($storage) ? null : array_map(fn($storage) => $storage->name, $storages);
+        $storageNames = is_null($storage) ? null : array_map(fn ($storage) => $storage->name, $storages);
 
         return $this->fileRepository()->directory($path, $storageNames, $type);
     }
@@ -415,7 +489,7 @@ final class FileLayer extends BaseFileLayer
         //     $storage = $this->etag($file);
         // }
 
-        if (! $this->existsPath($this->path($file), $storage) || !$this->checkFileEtagInStorage($file, $storage)) {
+        if (! $this->existsPath($this->path($file), $storage) || ! $this->checkFileEtagInStorage($file, $storage)) {
             try {
                 if ($file->isLocal()) {
                     $newPath = $storage->putFileAs(
@@ -481,7 +555,7 @@ final class FileLayer extends BaseFileLayer
         if (! $file->repositoryId() || $dirty) {
             return tap(
                 $this->register($file),
-                fn($file) => Synced::dispatch($file)
+                fn ($file) => Synced::dispatch($file)
             );
         }
 
@@ -498,8 +572,8 @@ final class FileLayer extends BaseFileLayer
 
         $rawFiles = $this->rawStorageFiles($path, $storages)
             ->when(count($storages) > 1, function (Collection $files) {
-                return  $files->sortBy(fn($file) => $file['storage'])
-                    ->unique(fn($file) => $file['path']);
+                return $files->sortBy(fn ($file) => $file['storage'])
+                    ->unique(fn ($file) => $file['path']);
             })
             ->values();
         $rawDirectories = $this->rawStorageDirectories($path, $storages);
@@ -507,7 +581,7 @@ final class FileLayer extends BaseFileLayer
         $rpDirectory = $this->repositoryDirectory($path, $storage, FileSystemItemType::FILE);
 
         $rpFiles = $rpDirectory->files ?? collect();
-        $rpFilesKeys = $rpFiles->keyBy(fn($file) => $file->path);
+        $rpFilesKeys = $rpFiles->keyBy(fn ($file) => $file->path);
 
         $files = $rawFiles->map(function ($file) use ($rpFilesKeys) {
             $currPath = $file['path'];
@@ -579,7 +653,7 @@ final class FileLayer extends BaseFileLayer
     private function selectStorages(array|string|StorageWrapper|null $storages): array
     {
         $storages = is_array($storages) ? $storages : [$storages];
-        $storages = array_map(fn($storage) => $this->selectStorage($storage), $storages);
+        $storages = array_map(fn ($storage) => $this->selectStorage($storage), $storages);
 
         return $storages;
     }
@@ -654,7 +728,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->makeFileWrapper($fileData),
-            fn($file) => Registered::dispatch($file)
+            fn ($file) => Registered::dispatch($file)
         );
     }
 

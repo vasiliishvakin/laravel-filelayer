@@ -9,7 +9,7 @@ use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use League\Flysystem\FilesystemAdapter as LaravelFilesystemAdapter;
 use Vaskiq\LaravelFileLayer\Wrappers\StorageWrapper;
 
-class StorageOperator
+final class StorageOperator
 {
     public const TMP_STORAGE_NAME = 'tmp';
 
@@ -18,10 +18,13 @@ class StorageOperator
     public readonly string $mainStorageName;
 
     /** @var array<string, mixed> */
-    protected readonly array $storagesConfig;
+    private readonly array $storagesConfig;
 
     /** @var array<string> */
-    protected readonly array $storagesNames;
+    private readonly array $storagesNames;
+
+    /** @var array<string, string> */
+    private readonly array $searchableStorages;
 
     private array $initStorages = [];
 
@@ -43,6 +46,12 @@ class StorageOperator
         $this->storagesConfig = $storages;
         $this->storagesNames = array_keys($storages);
         $this->mainStorageName = $defaultStorage;
+
+        $this->searchableStorages = collect($storages)
+            ->filter(fn ($config) => $config['searchable'] ?? true)
+            ->keys()
+            ->mapWithKeys(fn ($name) => [$name => $name])
+            ->toArray();
     }
 
     public function config(?string $name = null): ?array
@@ -66,6 +75,13 @@ class StorageOperator
      * @return \Iterator|StorageWrapper[]
      */
     public function storages(): \Iterator
+    {
+        foreach ($this->searchableStorages as $name) {
+            yield $this->storage($name);
+        }
+    }
+
+    public function allStorages(): \Iterator
     {
         foreach ($this->storagesNames as $name) {
             yield $this->storage($name);
