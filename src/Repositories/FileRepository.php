@@ -7,6 +7,7 @@ namespace Vaskiq\LaravelFileLayer\Repositories;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as RawBuilder;
 use Illuminate\Support\Collection;
+use Spatie\LaravelData\Data;
 use Vaskiq\LaravelDataLayer\Contracts\DataFactoryInterface;
 use Vaskiq\LaravelDataLayer\Repositories\EloquentRepository;
 use Vaskiq\LaravelFileLayer\Data\DirectoryData;
@@ -209,5 +210,33 @@ final class FileRepository extends EloquentRepository
         ]);
 
         return $result;
+    }
+
+    /**
+     * @param  FileData  $data
+     * @return FileData
+     */
+    public function save(Data $data): Data
+    {
+        $keyName = $this->model->getKeyName();
+        $fields = $data->toArray();
+
+        $model = $this->query()->where(function ($query) use ($fields, $keyName) {
+            $query->when(isset($fields[$keyName]), function ($query) use ($fields, $keyName) {
+                $query->where($keyName, $fields[$keyName]);
+            });
+
+            $query->when(isset($fields['path']), function ($query) use ($fields) {
+                $query->orWhere('path', $fields['path']);
+            });
+        })->first();
+
+        $model = $model ?? $this->model();
+
+        $model = $this->fillFromArray($model, $fields);
+
+        $model->save();
+
+        return $this->toData($model);
     }
 }
