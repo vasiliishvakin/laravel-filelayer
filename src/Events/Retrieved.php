@@ -13,8 +13,11 @@ class Retrieved
     /**
      * Create a new event instance.
      */
-    public function __construct(public readonly mixed $data = null)
-    {
+    public function __construct(
+        public readonly string $path,
+        public readonly string $storage,
+        public readonly mixed $data = null
+    ) {
         //
     }
 }

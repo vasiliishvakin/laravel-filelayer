@@ -114,11 +114,11 @@ class BaseFileLayer implements FileLayerInterface
         );
     }
 
-    public function getByPath(string $path, string|StorageWrapper|null $storage = null): string
+    public function getByPath(string $path, string|StorageWrapper|null $storage = null): ?string
     {
         return tap(
             $this->selectStorage($storage)->get($path),
-            fn ($value) => Retrieved::dispatch($value)
+            fn($value) => Retrieved::dispatch($path, $storage->name, $value)
         );
     }
 
@@ -143,7 +143,7 @@ class BaseFileLayer implements FileLayerInterface
 
         return tap(
             $this->selectStorage($storage)->exists($path),
-            fn ($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
+            fn($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
         );
     }
 
