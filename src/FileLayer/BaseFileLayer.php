@@ -67,9 +67,11 @@ class BaseFileLayer implements FileLayerInterface
         return $this->storageOperator()->isLocal($this->storageByFile($file));
     }
 
-    public function exists(FileSystemItemWrapperInterface $file): bool
+    public function exists(FileSystemItemWrapperInterface $file, StorageWrapper|string|null $storage = null): bool
     {
-        return $this->storageByFile($file)->exists($this->path($file));
+        $storage = $storage ? $this->selectStorage($storage) : $this->storageByFile($file);
+
+        return $storage->exists($this->path($file));
     }
 
     public function pathInfo(string $path, StorageWrapper|string|null $storage = null): PathInfoData

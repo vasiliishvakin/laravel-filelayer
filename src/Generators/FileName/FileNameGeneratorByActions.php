@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Vaskiq\LaravelFileLayer\Generators\FileName;
 
 use Illuminate\Support\Str;
+use Symfony\Component\Filesystem\Path;
 use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 class FileNameGeneratorByActions
@@ -17,33 +18,49 @@ class FileNameGeneratorByActions
 
     private readonly int $folder2Length;
 
-    private readonly string $hashAlgorithm;
+    private readonly array $reducingClasses;
 
     public function __construct()
     {
-        $this->prefix = config('filelayer.file_name_generator.prefix', 'processed');
+        $this->prefix = self::prefix();
         $this->noActionsName = config('filelayer.file_name_generator.no_actions_name', 'original');
         $this->folder1Length = config('filelayer.file_name_generator.folder_1_length', 1);
         $this->folder2Length = config('filelayer.file_name_generator.folder_2_length', 1);
-        $this->hashAlgorithm = config('filelayer.file_name_generator.hash_algorithm', 'sha1');
+        $this->reducingClasses = config('filelayer.file_name_generator.reducing_classes', []);
     }
 
-    public function __invoke(FileWrapper $file, array $actions): string
+    public static function prefix(): string
+    {
+        return config('filelayer.file_name_generator.prefix', 'processed');
+    }
+
+    public static function hashAlgorithm(): string
+    {
+        return config('filelayer.file_name_generator.hash_algorithm', 'sha1');
+    }
+
+    public static function hashFileName(string|FileWrapper $file): string
+    {
+        $name = $file instanceof FileWrapper ? $file->name() : basename($file);
+        $extension = $file instanceof FileWrapper ? $file->extension() : Path::getExtension($file, true);
+        $hash = hash(self::hashAlgorithm(), $name);
+
+        return $hash.'.'.$extension;
+    }
+
+    public function __invoke(string|FileWrapper $file, array $actions, ?string $subprefix = null): string
     {
         $actionClassesString = $this->actionsToPath($actions);
 
-        $hashPath = Str::of($file->path())
-            ->trim('/')
-            ->lower()
-            ->pipe(fn ($path) => Str::of(hash($this->hashAlgorithm, (string) $path)));
+        $newName = self::hashFileName($file);
 
-        $extension = $file->extension();
-        $fileName = $hashPath->append('.')->append($extension);
+        $folder_1 = substr($newName, 0, $this->folder1Length);
+        $folder_2 = substr($newName, $this->folder1Length, $this->folder2Length);
 
-        $folder_1 = $hashPath->substr(0, $this->folder1Length);
-        $folder_2 = $hashPath->substr($this->folder1Length, $this->folder2Length);
+        $pathParts = collect([$this->prefix(), $subprefix, $actionClassesString, $folder_1, $folder_2, $newName]);
+        $path = $pathParts->filter()->implode(DIRECTORY_SEPARATOR);
 
-        return implode(DIRECTORY_SEPARATOR, [$this->prefix(), $actionClassesString, $folder_1, $folder_2, $fileName]);
+        return $path;
     }
 
     public function actionsToPath(array $actions): string
@@ -53,16 +70,11 @@ class FileNameGeneratorByActions
             : implode(
                 '_',
                 array_map(
-                    fn ($action) => Str::of($action)->classBasename()->lower()->replace(['-', '_'], ''),
+                    fn (string $action) => Str::of($action)->classBasename()->swap($this->reducingClasses)->lower()->swap(['_' => '', '-' => ''])->toString(),
                     $actions
                 )
             );
 
         return $actionClassesString;
-    }
-
-    public function prefix(): string
-    {
-        return $this->prefix;
     }
 }

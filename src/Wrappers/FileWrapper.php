@@ -22,6 +22,11 @@ class FileWrapper extends BaseFileWrapper
         return $this->data()?->id ?? null;
     }
 
+    public function registered(): bool
+    {
+        return $this->repositoryId() !== null;
+    }
+
     public function incomplete(): bool
     {
         $data = $this->data();
@@ -128,6 +133,11 @@ class FileWrapper extends BaseFileWrapper
     public function processTo(array $actions, bool $force = false): self
     {
         return $this->fileLayer()->processTo($this, $actions, null, $force);
+    }
+
+    public function lazyProcessTo(array $actions, bool $force = false, string|StorageWrapper|null $tmpStorage = null): self|TmpFileWrapper
+    {
+        return $this->fileLayer()->lazyProcessTo($this, $actions, null, $force, $tmpStorage);
     }
 
     public function laravelFile(): File

@@ -202,7 +202,19 @@ final class FileLayer extends BaseFileLayer
 
     public function misplaced(FileWrapper $file): bool
     {
-        return $file->storage() !== $this->storageOperator()->mainStorageName;
+        if ($file->storage() !== $this->storageOperator()->mainStorageName) {
+            return true;
+        }
+
+        if (! $this->exists($file, $this->storageOperator()->mainStorage())) {
+            return true;
+        }
+
+        if (! $file->etag()) {
+            return true;
+        }
+
+        return ! $this->checkFileEtagInStorage($file, $this->storageOperator()->mainStorage());
     }
 
     public function delete(BaseFileWrapper $file): bool
@@ -215,14 +227,17 @@ final class FileLayer extends BaseFileLayer
             return true;
         }
 
-        $storage = $this->storageByFile($file);
-        $deletedInStorage = $storage->delete($this->path($file));
+        foreach ($this->storageOperator()->storages() as $storage) {
+            if ($storage->exists($file->path())) {
+                $deletedInStorage = $storage->delete($file->path());
+            }
+        }
 
         $deletedInDb = $file->repositoryId() !== null ? $this->fileRepository()->delete($file->repositoryId()) : true;
 
         Deleted::dispatch($file);
 
-        return $deletedInStorage && $deletedInDb;
+        return true;
     }
 
     public function copy(
@@ -302,7 +317,7 @@ final class FileLayer extends BaseFileLayer
         return $file;
     }
 
-    public function put(string $path, string $content, ?string $storageName = null): FileWrapper
+    public function put(string $path, string $content, ?string $storageName = null, ?string $origin = null): FileWrapper
     {
         $path = $this->normalizePath($path);
 
@@ -323,6 +338,7 @@ final class FileLayer extends BaseFileLayer
             'path' => $path,
             'storage' => $storage->name,
             'path_info' => $pathInfoData,
+            'origin' => $origin,
         ]));
 
         return tap(
@@ -363,16 +379,25 @@ final class FileLayer extends BaseFileLayer
         bool $force = false,
         bool $defer = false,
     ): FileWrapper {
+        $originPath = $file->path();
 
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
         $newPath = $this->normalizePath($newPath);
 
-        if (! $force && $existingFile = $this->fileByPath($newPath)) {
-            return $existingFile;
+        if (! $force && $existingFile = $this->fileByPath(path: $newPath, register: false)) {
+            if ($existingFile->registered()) {
+                return $existingFile;
+            } else {
+                $this->delete($existingFile);
+            }
         }
 
         if (empty($actions)) {
-            return $this->copy($file, $newPath);
+            if ($newPath && $newPath !== $originPath) {
+                return $this->copy($file, $newPath);
+            }
+
+            return $file;
         }
 
         if (! is_array($actions)) {
@@ -386,7 +411,7 @@ final class FileLayer extends BaseFileLayer
             $pipeline->send($workingFile)
                 ->through($actions)
                 ->then(
-                    fn ($file) => $this->put($newPath, $this->get($workingFile))
+                    fn ($file) => $this->put(path: $newPath, content: $this->get($file), origin: $originPath)
                 ),
             fn ($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
         );
@@ -398,16 +423,24 @@ final class FileLayer extends BaseFileLayer
         string|Stringable|callable|null $newPath = null,
         bool $force = false,
         string|StorageWrapper|null $tmpStorage = null,
-    ) {
+    ): FileWrapper|TmpFileWrapper {
+        $originPath = $file->path();
+
         $newPath = $this->generatePathForActions($file, $actions, $newPath);
         $newPath = $this->normalizePath($newPath);
 
         if (! $force && $existingFile = $this->fileByPath(path: $newPath, register: false)) {
-            return $existingFile;
+            if ($existingFile->registered()) {
+                return $existingFile;
+            } else {
+                $this->delete($existingFile);
+            }
         }
 
         if (empty($actions)) {
-            defer(fn () => $this->copy($file, $newPath));
+            if ($newPath && $newPath !== $originPath) {
+                defer(fn () => $this->copy($file, $newPath));
+            }
 
             return $file;
         }
@@ -430,8 +463,9 @@ final class FileLayer extends BaseFileLayer
             ->through($actions)
             ->thenReturn();
 
-        defer(function () use ($resultFile, $newPath, $file, $actions) {
-            $newFile = $this->put($newPath, $this->get($resultFile));
+        $content = $this->get($resultFile);
+        defer(function () use ($content, $newPath, $file, $actions, $originPath) {
+            $newFile = $this->put(path: $newPath, content: $content, origin: $originPath);
             Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions]);
         });
 

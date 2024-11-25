@@ -8,13 +8,12 @@ use Closure;
 use Spatie\ImageOptimizer\OptimizerChain;
 use Vaskiq\LaravelFileLayer\Contracts\FileProcessorInterface;
 use Vaskiq\LaravelFileLayer\Wrappers\BaseFileWrapper;
-use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 final class ImageOptimizer implements FileProcessorInterface
 {
     public function __construct(private readonly OptimizerChain $optimizerChain) {}
 
-    public function handle(BaseFileWrapper $file, Closure $next): FileWrapper
+    public function handle(BaseFileWrapper $file, Closure $next): BaseFileWrapper
     {
         if (! $file->isLocal()) {
             return $next($file);

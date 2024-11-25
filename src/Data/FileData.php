@@ -42,6 +42,12 @@ class FileData extends BaseFileData
         public readonly ?CarbonImmutable $updated_at = null,
 
         ?PathInfoData $path_info = null,
+
+        ?string $hash = null,
+        ?string $hash_name = null,
+        ?string $etag = null,
+
+        public readonly ?string $origin = null,
     ) {
         parent::__construct(
             path: $path,
@@ -52,8 +58,10 @@ class FileData extends BaseFileData
             size: $size,
             last_modified: $last_modified,
             url: $url,
-            path_info: $path_info
-
+            path_info: $path_info,
+            hash: $hash,
+            hash_name: $hash_name,
+            etag: $etag,
         );
     }
 
