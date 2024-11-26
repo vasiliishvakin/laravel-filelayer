@@ -70,10 +70,10 @@ final class TmpFileLayer extends BaseFileLayer
     {
         $content ??= '';
         $storage = $this->storage();
-        $extension = $extension ? '.'.ltrim($extension, '.') : '';
+        $extension = $extension ? '.' . ltrim($extension, '.') : '';
 
         do {
-            $fileName = Str::ulid().$extension;
+            $fileName = strtolower(Str::ulid()->toString()) . $extension;
         } while ($storage->exists($fileName));
 
         if (! $storage->put($fileName, $content)) {

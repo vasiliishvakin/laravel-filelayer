@@ -6,6 +6,7 @@ namespace Vaskiq\LaravelFileLayer\FileLayer;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Http\File;
+use Illuminate\Support\Facades\Log;
 use League\Flysystem\Config as FlysystemConfig;
 use Symfony\Component\Filesystem\Path;
 use Vaskiq\LaravelFileLayer\Contracts\FileLayerInterface;
@@ -40,6 +41,11 @@ class BaseFileLayer implements FileLayerInterface
         return $storage instanceof StorageWrapper
             ? $storage
             : $this->storageByName($storage);
+    }
+
+    public function mainStorage(): StorageWrapper
+    {
+        return $this->storageOperator()->mainStorage();
     }
 
     public function storageByName(?string $name = null): StorageWrapper
@@ -140,9 +146,15 @@ class BaseFileLayer implements FileLayerInterface
     public function existsPath(string $path, string|StorageWrapper|null $storage = null): bool
     {
         $storage = $this->selectStorage($storage);
-
         return tap(
-            $this->selectStorage($storage)->exists($path),
+            rescue(
+                fn() => $storage->exists($path),
+                function ($e) use ($path, $storage) {
+                    Log::debug(sprintf('Error (%s) on exists check "%s" on storage "%s": "%s"', class_basename($e), $path, $storage->name, $e->getMessage()), filelayer_log_context());
+                    return false;
+                },
+                true
+            ),
             fn($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
         );
     }
@@ -155,8 +167,7 @@ class BaseFileLayer implements FileLayerInterface
     public function normalizePath(string $path): string
     {
         $path = ltrim($path, '/');
-
-        return Path::normalize($path);
+        return Path::canonicalize($path);
     }
 
     public function etag(BaseFileWrapper $file): string

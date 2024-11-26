@@ -10,8 +10,6 @@ use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 class FileNameGeneratorByActions
 {
-    private readonly string $prefix;
-
     private readonly string $noActionsName;
 
     private readonly int $folder1Length;
