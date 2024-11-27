@@ -130,6 +130,10 @@ final class FileLayer extends BaseFileLayer
     {
         $path = $this->normalizePath($path);
 
+        if ($path === '' || $path === '/') {
+            return null;
+        }
+
         Finding::dispatch(['path' => $path, 'storage' => $storageName]);
 
         $fileData = $this->fileRepository()->findByPath($path, $storageName);

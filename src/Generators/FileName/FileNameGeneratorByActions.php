@@ -10,7 +10,8 @@ use Vaskiq\LaravelFileLayer\Wrappers\FileWrapper;
 
 class FileNameGeneratorByActions
 {
-    private readonly string $noActionsName;
+    private readonly string $prefix;
+    // private readonly string $noActionsName;
 
     private readonly int $folder1Length;
 
@@ -21,7 +22,7 @@ class FileNameGeneratorByActions
     public function __construct()
     {
         $this->prefix = self::prefix();
-        $this->noActionsName = config('filelayer.file_name_generator.no_actions_name', 'original');
+        // $this->noActionsName = config('filelayer.file_name_generator.no_actions_name', 'original');
         $this->folder1Length = config('filelayer.file_name_generator.folder_1_length', 1);
         $this->folder2Length = config('filelayer.file_name_generator.folder_2_length', 1);
         $this->reducingClasses = config('filelayer.file_name_generator.reducing_classes', []);
@@ -43,11 +44,15 @@ class FileNameGeneratorByActions
         $extension = $file instanceof FileWrapper ? $file->extension() : Path::getExtension($file, true);
         $hash = hash(self::hashAlgorithm(), $name);
 
-        return $hash.'.'.$extension;
+        return $hash . '.' . $extension;
     }
 
-    public function __invoke(string|FileWrapper $file, array $actions, ?string $subprefix = null): string
+    public function __invoke(string|FileWrapper $file, array $actions, ?string $subprefix = null): ?string
     {
+        if (empty($actions)) {
+            return null;
+        }
+
         $actionClassesString = $this->actionsToPath($actions);
 
         $newName = self::hashFileName($file);
@@ -55,7 +60,7 @@ class FileNameGeneratorByActions
         $folder_1 = substr($newName, 0, $this->folder1Length);
         $folder_2 = substr($newName, $this->folder1Length, $this->folder2Length);
 
-        $pathParts = collect([$this->prefix(), $subprefix, $actionClassesString, $folder_1, $folder_2, $newName]);
+        $pathParts = collect([$this->prefix, $subprefix, $actionClassesString, $folder_1, $folder_2, $newName]);
         $path = $pathParts->filter()->implode(DIRECTORY_SEPARATOR);
 
         return $path;
@@ -63,15 +68,16 @@ class FileNameGeneratorByActions
 
     public function actionsToPath(array $actions): string
     {
-        $actionClassesString = empty($actions)
-            ? $this->noActionsName
-            : implode(
-                '_',
-                array_map(
-                    fn (string $action) => Str::of($action)->classBasename()->swap($this->reducingClasses)->lower()->swap(['_' => '', '-' => ''])->toString(),
-                    $actions
-                )
-            );
+        if (empty($actions)) {
+            throw new \InvalidArgumentException('Actions array must not be empty');
+        }
+        return implode(
+            '_',
+            array_map(
+                fn(string $action) => Str::of($action)->classBasename()->swap($this->reducingClasses)->lower()->swap(['_' => '', '-' => ''])->toString(),
+                $actions
+            )
+        );
 
         return $actionClassesString;
     }
