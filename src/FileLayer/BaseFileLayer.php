@@ -122,8 +122,9 @@ class BaseFileLayer implements FileLayerInterface
 
     public function getByPath(string $path, string|StorageWrapper|null $storage = null): ?string
     {
+        $storage = $this->selectStorage($storage);
         return tap(
-            $this->selectStorage($storage)->get($path),
+            $storage->get($path),
             fn($value) => Retrieved::dispatch($path, $storage->name, $value)
         );
     }
