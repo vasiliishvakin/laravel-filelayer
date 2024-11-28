@@ -123,9 +123,10 @@ class BaseFileLayer implements FileLayerInterface
     public function getByPath(string $path, string|StorageWrapper|null $storage = null): ?string
     {
         $storage = $this->selectStorage($storage);
+
         return tap(
             $storage->get($path),
-            fn($value) => Retrieved::dispatch($path, $storage->name, $value)
+            fn ($value) => Retrieved::dispatch($path, $storage->name, $value)
         );
     }
 
@@ -147,16 +148,18 @@ class BaseFileLayer implements FileLayerInterface
     public function existsPath(string $path, string|StorageWrapper|null $storage = null): bool
     {
         $storage = $this->selectStorage($storage);
+
         return tap(
             rescue(
-                fn() => $storage->exists($path),
+                fn () => $storage->exists($path),
                 function ($e) use ($path, $storage) {
                     Log::debug(sprintf('Error (%s) on exists check "%s" on storage "%s": "%s"', class_basename($e), $path, $storage->name, $e->getMessage()), filelayer_log_context());
+
                     return false;
                 },
                 true
             ),
-            fn($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
+            fn ($value) => CheckedExists::dispatch(['path' => $path, 'storage' => $storage->name, 'exists' => $value])
         );
     }
 
@@ -168,10 +171,11 @@ class BaseFileLayer implements FileLayerInterface
     public function normalizePath(string $path): string
     {
         $path = ltrim($path, '/');
+
         return Path::canonicalize($path);
     }
 
-    public function etag(BaseFileWrapper $file): string
+    public function etag(BaseFileWrapper $file): ?string
     {
         return $this->isLocal($file)
             ? $this->calcStorageEtag($file)
@@ -191,11 +195,15 @@ class BaseFileLayer implements FileLayerInterface
         return $file->etag() === $etag;
     }
 
-    public function hash(BaseFileWrapper $file, string $hashName = self::HASH_ALGORITHM): string
+    public function hash(BaseFileWrapper $file, string $hashName = self::HASH_ALGORITHM): ?string
     {
-        return $this->isLocal($file)
-            ? hash_file($hashName, $file->fullPath())
-            : hash($hashName, $this->get($file));
+        if ($this->isLocal($file)) {
+            return hash_file($hashName, $file->fullPath());
+        }
+
+        $fileContent = $this->get($file);
+
+        return $fileContent !== null ? hash($hashName, $fileContent) : null;
     }
 
     protected function putToStorage(string $path, string $content, string|StorageWrapper|null $storage = null): bool
@@ -235,13 +243,20 @@ class BaseFileLayer implements FileLayerInterface
         }
     }
 
-    private function calcStorageEtag(BaseFileWrapper $file, string|StorageWrapper|null $storage = null): string
+    private function calcStorageEtag(BaseFileWrapper $file, string|StorageWrapper|null $storage = null): ?string
     {
         $storage = $storage ? $this->selectStorage($storage) : $this->storageByFile($file);
-        $path = $storage->path($this->path($file));
 
-        return $this->storageOperator()->isLocal($storage)
-            ? hash_file(self::ETAG_HASH_ALGORITHM, $path)
-            : hash(self::ETAG_HASH_ALGORITHM, $this->getByPath($path));
+        if (! $storage->exists($file->path())) {
+            return null;
+        }
+
+        if ($this->storageOperator()->isLocal($storage)) {
+            return hash_file(self::ETAG_HASH_ALGORITHM, $storage->path($file->path()));
+        }
+
+        $content = $this->getByPath($file->path(), $storage);
+
+        return $content ? hash(self::ETAG_HASH_ALGORITHM, $content) : null;
     }
 }

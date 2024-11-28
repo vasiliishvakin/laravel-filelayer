@@ -105,7 +105,7 @@ final class FileLayer extends BaseFileLayer
 
             return tap(
                 $this->makeFileWrapper($fileData),
-                fn($file) => Founded::dispatch($file)
+                fn ($file) => Founded::dispatch($file)
             );
         }
 
@@ -118,7 +118,7 @@ final class FileLayer extends BaseFileLayer
 
                 return tap(
                     $this->makeFileWrapper($fileDataWithStorage),
-                    fn($file) => Founded::dispatch($file)
+                    fn ($file) => Founded::dispatch($file)
                 );
             }
         }
@@ -167,7 +167,7 @@ final class FileLayer extends BaseFileLayer
                 if ($register) {
                     return tap(
                         $this->register($file),
-                        fn($file) => Founded::dispatch($file)
+                        fn ($file) => Founded::dispatch($file)
                     );
                 }
 
@@ -247,7 +247,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($fileWrapper),
-            fn($file) => Copied::dispatch($file)
+            fn ($file) => Copied::dispatch($file)
         );
     }
 
@@ -320,10 +320,9 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->register($file),
-            fn($file) => Stored::dispatch($file)
+            fn ($file) => Stored::dispatch($file)
         );
     }
-
 
     /**
      * @param  array<mixed>  $actions
@@ -343,7 +342,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $file,
-            fn($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
+            fn ($file) => Processed::dispatch(['file' => $file, 'newFile' => $file, 'actions' => $actions])
         );
     }
 
@@ -389,9 +388,9 @@ final class FileLayer extends BaseFileLayer
             $pipeline->send($workingFile)
                 ->through($actions)
                 ->then(
-                    fn($file) => $this->put(path: $newPath, content: $this->get($file), origin: $originPath)
+                    fn ($file) => $this->put(path: $newPath, content: $this->get($file), origin: $originPath)
                 ),
-            fn($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
+            fn ($newFile) => Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions])
         );
     }
 
@@ -417,7 +416,7 @@ final class FileLayer extends BaseFileLayer
 
         if (empty($actions)) {
             if ($newPath && $newPath !== $originPath) {
-                defer(fn() => $this->copy($file, $newPath));
+                defer(fn () => $this->copy($file, $newPath));
             }
 
             return $file;
@@ -475,7 +474,7 @@ final class FileLayer extends BaseFileLayer
 
         $storages = is_null($storage) ? null : $this->selectStorages($storage);
 
-        $storageNames = is_null($storage) ? null : array_map(fn($storage) => $storage->name, $storages);
+        $storageNames = is_null($storage) ? null : array_map(fn ($storage) => $storage->name, $storages);
 
         return $this->fileRepository()->directory($path, $storageNames, $type);
     }
@@ -567,7 +566,7 @@ final class FileLayer extends BaseFileLayer
         if (! $file->repositoryId() || $dirty) {
             return tap(
                 $this->register($file),
-                fn($file) => Synced::dispatch($file)
+                fn ($file) => Synced::dispatch($file)
             );
         }
 
@@ -584,8 +583,8 @@ final class FileLayer extends BaseFileLayer
 
         $rawFiles = $this->rawStorageFiles($path, $storages)
             ->when(count($storages) > 1, function (Collection $files) {
-                return $files->sortBy(fn($file) => $file['storage'])
-                    ->unique(fn($file) => $file['path']);
+                return $files->sortBy(fn ($file) => $file['storage'])
+                    ->unique(fn ($file) => $file['path']);
             })
             ->values();
         $rawDirectories = $this->rawStorageDirectories($path, $storages);
@@ -593,7 +592,7 @@ final class FileLayer extends BaseFileLayer
         $rpDirectory = $this->repositoryDirectory($path, $storage, FileSystemItemType::FILE);
 
         $rpFiles = $rpDirectory->files ?? collect();
-        $rpFilesKeys = $rpFiles->keyBy(fn($file) => $file->path);
+        $rpFilesKeys = $rpFiles->keyBy(fn ($file) => $file->path);
 
         $files = $rawFiles->map(function ($file) use ($rpFilesKeys) {
             $currPath = $file['path'];
@@ -651,20 +650,42 @@ final class FileLayer extends BaseFileLayer
             : $this->storageOperator()->storages();
 
         foreach ($storages as $storage) {
-            if (!$this->existsPath($path, $storage)) {
+            if (! $this->existsPath($path, $storage)) {
                 continue;
             }
             $storage->delete($path);
         }
 
         Deleted::dispatch($path);
+
         return true;
+    }
+
+    public function clearProcessed(string|FileWrapper $path): void
+    {
+        if ($path instanceof FileWrapper) {
+            $path = $path->path();
+        }
+
+        $path = $this->normalizePath($path);
+
+        $paths = $this->fileRepository()->findPathsByOrigin($path);
+
+        $this->fileRepository()->deleteByOrigin($path);
+
+        foreach ($paths as $path) {
+            foreach ($this->storageOperator()->storages() as $storage) {
+                if ($storage->exists($path)) {
+                    $storage->delete($path);
+                }
+            }
+        }
     }
 
     private function selectStorages(array|string|StorageWrapper|null $storages): array
     {
         $storages = is_array($storages) ? $storages : [$storages];
-        $storages = array_map(fn($storage) => $this->selectStorage($storage), $storages);
+        $storages = array_map(fn ($storage) => $this->selectStorage($storage), $storages);
 
         return $storages;
     }
@@ -739,7 +760,7 @@ final class FileLayer extends BaseFileLayer
 
         return tap(
             $this->makeFileWrapper($fileData),
-            fn($file) => Registered::dispatch($file)
+            fn ($file) => Registered::dispatch($file)
         );
     }
 
@@ -766,26 +787,5 @@ final class FileLayer extends BaseFileLayer
             })(),
             is_string($newPath) => $newPath,
         };
-    }
-
-    public function clearProcessed(string|FileWrapper $path): void
-    {
-        if ($path instanceof FileWrapper) {
-            $path = $path->path();
-        }
-
-        $path = $this->normalizePath($path);
-
-        $paths = $this->fileRepository()->findPathsByOrigin($path);
-
-        $this->fileRepository()->deleteByOrigin($path);
-
-        foreach ($paths as $path) {
-            foreach ($this->storageOperator()->storages() as $storage) {
-                if ($storage->exists($path)) {
-                    $storage->delete($path);
-                }
-            }
-        }
     }
 }

@@ -44,7 +44,7 @@ class FileNameGeneratorByActions
         $extension = $file instanceof FileWrapper ? $file->extension() : Path::getExtension($file, true);
         $hash = hash(self::hashAlgorithm(), $name);
 
-        return $hash . '.' . $extension;
+        return $hash.'.'.$extension;
     }
 
     public static function hashPath(string|FileWrapper $file): string
@@ -54,7 +54,7 @@ class FileNameGeneratorByActions
         $extension = $file instanceof FileWrapper ? $file->extension() : Path::getExtension($file, true);
         $hash = hash(self::hashAlgorithm(), $path);
 
-        return $hash . '.' . $extension;
+        return $hash.'.'.$extension;
     }
 
     public function __invoke(string|FileWrapper $file, array $actions, ?string $subprefix = null): ?string
@@ -81,10 +81,11 @@ class FileNameGeneratorByActions
         if (empty($actions)) {
             throw new \InvalidArgumentException('Actions array must not be empty');
         }
+
         return implode(
             '_',
             array_map(
-                fn(string $action) => Str::of($action)->classBasename()->swap($this->reducingClasses)->lower()->swap(['_' => '', '-' => ''])->toString(),
+                fn (string $action) => Str::of($action)->classBasename()->swap($this->reducingClasses)->lower()->swap(['_' => '', '-' => ''])->toString(),
                 $actions
             )
         );

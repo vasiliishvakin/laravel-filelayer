@@ -56,9 +56,9 @@ final class FileRepository extends EloquentRepository
     {
         return $this->queryByDirectory($directory, $storage)
             // @phpstan-ignore argument.type
-            ->when($limit, fn($q) => $q->limit($limit))
+            ->when($limit, fn ($q) => $q->limit($limit))
             // @phpstan-ignore argument.type
-            ->when($offset, fn($q) => $q->offset($offset))
+            ->when($offset, fn ($q) => $q->offset($offset))
             ->pluck('path');
     }
 
@@ -96,8 +96,8 @@ final class FileRepository extends EloquentRepository
     public function queryByDirectory(?string $directory = null, array|string|null $storage = null): Builder
     {
         return $this->query()
-            ->when($directory, fn(Builder $q) => $q->where('directory', $directory))
-            ->when(! $directory, fn(Builder $q) => $q->whereNull('directory'))
+            ->when($directory, fn (Builder $q) => $q->where('directory', $directory))
+            ->when(! $directory, fn (Builder $q) => $q->whereNull('directory'))
             ->when($storage, function (Builder $q, $storage) {
                 if (is_array($storage)) {
                     if (! empty($storage)) {
@@ -112,8 +112,8 @@ final class FileRepository extends EloquentRepository
     public function queryRawByDirectory(?string $directory = null, array|string|null $storage = null): RawBuilder
     {
         return $this->raw()
-            ->when($directory, fn(RawBuilder $q) => $q->where('directory', $directory))
-            ->when(! $directory, fn(RawBuilder $q) => $q->whereNull('directory'))
+            ->when($directory, fn (RawBuilder $q) => $q->where('directory', $directory))
+            ->when(! $directory, fn (RawBuilder $q) => $q->whereNull('directory'))
             ->when($storage, function (RawBuilder $q, $storage) {
                 if (is_array($storage)) {
                     if (count($storage) > 0) {
@@ -180,7 +180,7 @@ final class FileRepository extends EloquentRepository
         if ($type !== FileSystemItemType::FILE) {
             $queryDirs = $this->raw()
                 ->selectRaw("DISTINCT SUBSTRING_INDEX(directory, '/', ?) AS first_level_dir, storage", [$segmentCount + 1])
-                ->where('directory', 'LIKE', $path . '/%')
+                ->where('directory', 'LIKE', $path.'/%')
                 ->where('directory', '!=', $path)
                 ->when($storage, function (RawBuilder $q, $storage) {
                     if (is_array($storage)) {
@@ -194,7 +194,7 @@ final class FileRepository extends EloquentRepository
                     }
                 });
             $directories = $queryDirs->get('first_level_dir');
-            $directories = $directories->map(fn($dir) => DirectoryData::from([
+            $directories = $directories->map(fn ($dir) => DirectoryData::from([
                 'path' => $dir->first_level_dir,
                 'storage' => $dir->storage,
             ]));
