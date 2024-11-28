@@ -1,5 +1,7 @@
 <?php
 
+use Symfony\Component\Filesystem\Path;
+
 if (! function_exists('filelayer_log_context')) {
     function filelayer_log_context(array|string|Closure|null $context = null): array
     {
@@ -28,5 +30,12 @@ if (! function_exists('filelayer_log_context')) {
         $context = array_merge($defaultContext, $context);
 
         return $context;
+    }
+
+    if (! function_exists('storage_path_normalize')) {
+        function storage_path_normalize(string $path): string
+        {
+            return Path::canonicalize(ltrim($path, '/'));
+        }
     }
 }

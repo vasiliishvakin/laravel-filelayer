@@ -47,6 +47,16 @@ class FileNameGeneratorByActions
         return $hash . '.' . $extension;
     }
 
+    public static function hashPath(string|FileWrapper $file): string
+    {
+        $path = $file instanceof FileWrapper ? $file->path() : $file;
+        $path = storage_path_normalize($path);
+        $extension = $file instanceof FileWrapper ? $file->extension() : Path::getExtension($file, true);
+        $hash = hash(self::hashAlgorithm(), $path);
+
+        return $hash . '.' . $extension;
+    }
+
     public function __invoke(string|FileWrapper $file, array $actions, ?string $subprefix = null): ?string
     {
         if (empty($actions)) {
@@ -55,7 +65,7 @@ class FileNameGeneratorByActions
 
         $actionClassesString = $this->actionsToPath($actions);
 
-        $newName = self::hashFileName($file);
+        $newName = self::hashPath($file);
 
         $folder_1 = substr($newName, 0, $this->folder1Length);
         $folder_2 = substr($newName, $this->folder1Length, $this->folder2Length);
