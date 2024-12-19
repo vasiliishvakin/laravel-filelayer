@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer;
 
+use Closure;
 use Illuminate\Http\File;
 use Illuminate\Pipeline\Pipeline;
 use Illuminate\Support\Collection;
@@ -400,6 +401,7 @@ final class FileLayer extends BaseFileLayer
         string|Stringable|callable|null $newPath = null,
         bool $force = false,
         string|StorageWrapper|null $tmpStorage = null,
+        ?Closure $callback = null,
     ): FileWrapper|TmpFileWrapper {
         $originPath = $file->path();
 
@@ -441,8 +443,11 @@ final class FileLayer extends BaseFileLayer
             ->thenReturn();
 
         $content = $this->get($resultFile);
-        defer(function () use ($content, $newPath, $file, $actions, $originPath) {
+        defer(function () use ($content, $newPath, $file, $actions, $originPath, $callback) {
             $newFile = $this->put(path: $newPath, content: $content, origin: $originPath);
+            if (is_callable($callback)) {
+                $callback($newFile);
+            }
             Processed::dispatch(['file' => $file, 'newFile' => $newFile, 'actions' => $actions]);
         });
 
@@ -682,6 +687,31 @@ final class FileLayer extends BaseFileLayer
         }
     }
 
+    /**
+     * @param  array<mixed>  $actions
+     */
+    public function generatePathForActions(FileWrapper $file, array|string $actions, string|Stringable|callable|null $newPath = null): string
+    {
+        $newPath = $newPath ?? FileNameGeneratorByActions::class;
+        if (! is_array($actions)) {
+            $actions = [$actions];
+        }
+
+        return (string) match (true) {
+            $newPath instanceof \Stringable => (string) $newPath,
+            is_callable($newPath) => $newPath($file, $actions),
+            class_exists($newPath) => (function () use ($newPath, $file, $actions) {
+                $pathGenerator = App::make($newPath);
+                if (! is_callable($pathGenerator)) {
+                    throw new \InvalidArgumentException('Path generator must be callable.');
+                }
+
+                return $pathGenerator($file, $actions);
+            })(),
+            is_string($newPath) => $newPath,
+        };
+    }
+
     private function selectStorages(array|string|StorageWrapper|null $storages): array
     {
         $storages = is_array($storages) ? $storages : [$storages];
@@ -762,30 +792,5 @@ final class FileLayer extends BaseFileLayer
             $this->makeFileWrapper($fileData),
             fn ($file) => Registered::dispatch($file)
         );
-    }
-
-    /**
-     * @param  array<mixed>  $actions
-     */
-    private function generatePathForActions(FileWrapper $file, array|string $actions, string|Stringable|callable|null $newPath = null): string
-    {
-        $newPath = $newPath ?? FileNameGeneratorByActions::class;
-        if (! is_array($actions)) {
-            $actions = [$actions];
-        }
-
-        return (string) match (true) {
-            $newPath instanceof \Stringable => (string) $newPath,
-            is_callable($newPath) => $newPath($file, $actions),
-            class_exists($newPath) => (function () use ($newPath, $file, $actions) {
-                $pathGenerator = App::make($newPath);
-                if (! is_callable($pathGenerator)) {
-                    throw new \InvalidArgumentException('Path generator must be callable.');
-                }
-
-                return $pathGenerator($file, $actions);
-            })(),
-            is_string($newPath) => $newPath,
-        };
     }
 }
