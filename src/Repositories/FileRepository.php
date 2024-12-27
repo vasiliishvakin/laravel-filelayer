@@ -39,6 +39,24 @@ final class FileRepository extends EloquentRepository
         return $model ? $this->toData($model) : null;
     }
 
+    public function findByArrayPaths(array $paths, string|array|null $storage = null): Collection
+    {
+        $models = $this->query()
+            ->whereIn('path', $paths)
+            ->when($storage, function (Builder $q, $storage) {
+                if (is_array($storage)) {
+                    if (count($storage) > 0) {
+                        $q->whereIn('storage', $storage);
+                    }
+                } else {
+                    $q->where('storage', $storage);
+                }
+            })
+            ->get();
+
+        return $this->toDataCollection($models);
+    }
+
     public function existsByPath(string $path, ?string $storage = null): bool
     {
         return $this->queryByPath($path, $storage)->exists();

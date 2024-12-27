@@ -92,4 +92,17 @@ class BaseFileWrapper extends FileSystemItemWrapper implements BaseFileWrapperIn
     {
         return $this->data()->hash_name ?? $this->fileLayer()::HASH_ALGORITHM;
     }
+
+    public function getProperty(string $name, mixed $default = null): mixed
+    {
+        if (method_exists($this, $name)) {
+            return $this->{$name}();
+        }
+
+        if (property_exists($this->data(), $name)) {
+            return $this->data()->{$name};
+        }
+
+        return $default;
+    }
 }

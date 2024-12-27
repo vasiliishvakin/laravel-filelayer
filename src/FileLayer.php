@@ -149,7 +149,27 @@ final class FileLayer extends BaseFileLayer
             return $file;
         }
 
-        foreach ($this->storageOperator()->storages() as $storage) {
+        return $this->fileByPathFromStorages($path, $storageName, $register);
+    }
+
+    public function fileByPathFromStorages(string $path, string|array|StorageWrapper|null $storageName = null, bool $register = false): ?FileWrapper
+    {
+        $path = $this->normalizePath($path);
+
+        if ($path === '' || $path === '/') {
+            return null;
+        }
+
+        // $storages = is_string($storageName) ? [$this->selectStorage($storageName)] : $this->storageOperator()->storages();
+        $storages = match (true) {
+            is_string($storageName) => [$this->selectStorage($storageName)],
+            $storageName instanceof StorageWrapper => [$storageName],
+            is_null($storageName) => $this->storageOperator()->storages(),
+            is_array($storageName) => array_map(fn ($storage) => $this->selectStorage($storage), $storageName),
+            default => throw new \InvalidArgumentException('Storage must be string, StorageWrapper, or array of strings or StorageWrappers'),
+        };
+
+        foreach ($storages as $storage) {
             if ($storage->name === StorageOperator::TMP_STORAGE_NAME) {
                 continue;
             }
@@ -177,6 +197,31 @@ final class FileLayer extends BaseFileLayer
         }
 
         return null;
+    }
+
+    /**
+     * @return Collection<FileWrapper>
+     */
+    public function filesByPaths(array $paths, ?string $storageName = null, bool $register = false): Collection
+    {
+        $paths = array_map(fn ($path) => $this->normalizePath($path), $paths);
+
+        $filesData = $this->fileRepository()->findByArrayPaths($paths, $storageName);
+
+        $files = $filesData->map(fn ($fileData) => $this->makeFileWrapper($fileData));
+
+        $unfoundedPaths = array_diff($paths, $filesData->pluck('path')->toArray());
+        foreach ($unfoundedPaths as $path) {
+            $file = $this->fileByPathFromStorages($path, $storageName, $register);
+            if ($file) {
+                if ($register) {
+                    $file = $this->register($file);
+                }
+                $files->push($file);
+            }
+        }
+
+        return $files;
     }
 
     /**
@@ -410,7 +455,7 @@ final class FileLayer extends BaseFileLayer
 
         if (! $force && $existingFile = $this->fileByPath(path: $newPath, register: false)) {
             if ($existingFile->registered()) {
-                return $existingFile;
+                //return $existingFile;
             } else {
                 $this->delete($existingFile);
             }
