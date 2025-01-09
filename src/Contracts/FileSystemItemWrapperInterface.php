@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Vaskiq\LaravelFileLayer\Contracts;
 
-use Stringable;
 use Vaskiq\LaravelFileLayer\Data\FileSystemItemData;
 
-interface FileSystemItemWrapperInterface extends Stringable
+interface FileSystemItemWrapperInterface extends FsInfoInterface
 {
     public static function from(FileSystemItemData $data, ?FileLayerInterface $fileLayer): static;
 
@@ -22,6 +21,4 @@ interface FileSystemItemWrapperInterface extends Stringable
     public function toKey(): string;
 
     public function isLocal(): bool;
-
-    public function fullPath(): string;
 }

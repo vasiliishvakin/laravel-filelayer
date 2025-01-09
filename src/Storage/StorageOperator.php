@@ -40,7 +40,7 @@ final class StorageOperator
             throw new \Exception('Default storage is read-only');
         }
 
-        //TODO: in the future we can use multiple main storages fo shards
+        // TODO: in the future we can use multiple main storages fo shards
         $this->initStorages[$defaultStorage] = $this->makeStorageWrapper($defaultStorage);
 
         $this->storagesConfig = $storages;

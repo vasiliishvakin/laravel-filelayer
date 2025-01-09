@@ -7,7 +7,7 @@ namespace Vaskiq\LaravelFileLayer\Processors;
 use Closure;
 use Intervention\Image\ImageManager;
 use Vaskiq\LaravelFileLayer\Contracts\FileProcessorInterface;
-use Vaskiq\LaravelFileLayer\Wrappers\BaseFileWrapper;
+use Vaskiq\LaravelFileLayer\Contracts\FsInfoInterface;
 
 final class Thumbnail_300x300 implements FileProcessorInterface
 {
@@ -15,7 +15,7 @@ final class Thumbnail_300x300 implements FileProcessorInterface
 
     public function __construct(private readonly ImageManager $manager) {}
 
-    public function handle(BaseFileWrapper $file, Closure $next): BaseFileWrapper
+    public function handle(FsInfoInterface $file, Closure $next): FsInfoInterface
     {
         $image = $this->manager->read($file->fullPath());
         $image->cover(self::SIDE_SIZE, self::SIDE_SIZE);

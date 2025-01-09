@@ -455,7 +455,7 @@ final class FileLayer extends BaseFileLayer
 
         if (! $force && $existingFile = $this->fileByPath(path: $newPath, register: false)) {
             if ($existingFile->registered()) {
-                //return $existingFile;
+                // return $existingFile;
             } else {
                 $this->delete($existingFile);
             }
@@ -577,7 +577,7 @@ final class FileLayer extends BaseFileLayer
                     $e->getMessage()
                 ), filelayer_log_context());
 
-                return $file; //return original file if failed to put file to new storage
+                return $file; // return original file if failed to put file to new storage
             }
             $source = $file->path() !== $newPath ? $file->path() : null;
         }
