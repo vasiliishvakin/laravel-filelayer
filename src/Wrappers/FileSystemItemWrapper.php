@@ -64,7 +64,7 @@ class FileSystemItemWrapper implements FileSystemItemWrapperInterface
 
     public function toKey(): string
     {
-        return $this->storage().':'.$this->path();
+        return $this->storage() . ':' . $this->path();
     }
 
     public function __toString(): string
@@ -80,5 +80,25 @@ class FileSystemItemWrapper implements FileSystemItemWrapperInterface
     public function fullPath(): string
     {
         return $this->fileLayer()->fullPath($this);
+    }
+
+    public function name(): string
+    {
+        throw new \BadMethodCallException('Method not implemented');
+    }
+
+    public function extension(): ?string
+    {
+        throw new \BadMethodCallException('Method not implemented');
+    }
+
+    public function size(): ?int
+    {
+        throw new \BadMethodCallException('Method not implemented');
+    }
+
+    public function mime(): ?string
+    {
+        throw new \BadMethodCallException('Method not implemented');
     }
 }
