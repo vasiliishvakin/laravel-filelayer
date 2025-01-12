@@ -64,7 +64,7 @@ class FileSystemItemWrapper implements FileSystemItemWrapperInterface
 
     public function toKey(): string
     {
-        return $this->storage() . ':' . $this->path();
+        return $this->storage().':'.$this->path();
     }
 
     public function __toString(): string
