@@ -14,7 +14,7 @@
         "php": "^8.3",
         "intervention/image": "^3.9",
         "spatie/laravel-image-optimizer": "^1.8",
-        "vaskiq/laravel-datalayer": "^0.1-dev",
+        "vaskiq/laravel-datalayer": "^0.2-dev",
         "symfony/filesystem": "^7.0"
     },
     "suggest": {
